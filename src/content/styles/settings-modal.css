@@ -1,0 +1,186 @@
+/* このファイルは設定モーダル本体と、終端演出に使う補助アニメーションをまとめる。 */
+/* --- Settings Modal (Unified Material) --- */
+#yl-settings-modal {
+  position: absolute;
+  top: 320px;
+  left: 260px;
+
+  /* 閉じた状態（初期状態）: 小さく、中身を隠す */
+  width: 100px;
+  /* 横幅を小さく */
+  max-height: 40px;
+  /* 高さを小さく */
+  padding: 0px;
+  /* 余白もなくす */
+
+  /* エディタと共通の Cyber-Glass マテリアル */
+  background: rgba(15, 19, 25, 0.65);
+  backdrop-filter: blur(50px) saturate(180%);
+  -webkit-backdrop-filter: blur(50px) saturate(180%);
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  /* 0 20px 80px rgba(0,0,0,0.8); */
+
+  border-radius: 24px;
+  z-index: 2147483647;
+
+  /* ★重要: 小さくなった時にはみ出た中身を切り取る */
+  /* 開閉アニメ中も中身が外へ漏れず、「箱が育つ」見え方を優先する。 */
+  overflow: hidden;
+
+  /* 非表示状態 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) scale(0.92);
+
+  /* ★変更: 閉じる時のアニメーション設定 */
+  /* すべての時間を合わせ、visibilityのみ step-end (アニメーション終了後にhidden) にする */
+  transition:
+    opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    width 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    max-height 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    visibility 0.3s step-end;
+  /* ← これが重要：0.3秒待ってからhiddenにする */
+
+  color: var(--yl-text-primary);
+  pointer-events: auto;
+
+  /* テキストの折り返しなどを防ぐ */
+  white-space: nowrap;
+}
+
+#yl-settings-modal.active {
+  /* 開いた状態: サイズ指定 */
+  width: 300px;
+  max-height: 600px;
+  /* 十分な高さを確保 */
+  padding: 24px;
+  /* 余白を戻す */
+
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+
+  /* 開く時のアニメーション設定 */
+  /* 開く時は即座に visible (step-start) にする */
+  transition:
+    opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    width 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    max-height 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+    visibility 0s step-start;
+}
+
+/* ★追加: 中身が崩れないように固定幅を持たせる */
+/* 親ボックスが小さくなっても、中身は縮まずに「見切れる」状態を作る。 */
+#yl-settings-modal>* {
+  /* (300px - 左右padding 48px) 近似値で中身の幅を確保 */
+  min-width: 250px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* 閉じかけの時に中身を少し早く消す（オプション） */
+/* これを入れると、枠が縮むのと同時に中身がフワッと消えてより自然になります */
+#yl-settings-modal:not(.active)>* {
+  opacity: 0;
+  transition-duration: 0.2s;
+  /* 枠より少し早く消える */
+}
+
+/* --- 間奏用のスペーサー（見えないが、スクロール位置を確保する） --- */
+.yl-instrumental-spacer {
+  height: 10vh;
+  /* 少し余白を持たせる */
+  width: 100%;
+  opacity: 0;
+}
+
+/* --- 消えていく歌詞の状態 --- */
+.yl-line.yl-dissolved {
+  /* 文字自体はふわっと消える */
+  opacity: 0 !important;
+  filter: blur(10px) !important;
+  transform: scale(1.1) !important;
+  transition: all 1.5s ease-out !important;
+  /* ゆっくり消える */
+  pointer-events: none;
+}
+
+/* --- パーティクル（光の粒） --- */
+.yl-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 10;
+
+  /* 光る表現 */
+  box-shadow: 0 0 6px var(--yl-accent);
+
+  /* アニメーション実行 */
+  animation: particle-float 2s ease-out forwards;
+  /* JSでセットした遅延時間を適用 */
+  animation-delay: 0s;
+  /* バラつきを持たせたい場合はJS側でdelayを操作 */
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    /* JSで計算したランダムな方向へ飛ぶ */
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* 終了モード時：現在の行（パーティクル化対象）だけは余韻を残して消す */
+#yl-scroll-wrapper.finished .yl-line.current {
+  /* current だけは少し余韻を残し、完全な瞬断に見えないようにする。 */
+  opacity: 0 !important;
+  transform: scale(1.2) !important;
+  /* 少し拡大しながら消える */
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out !important;
+  pointer-events: none;
+}
+
+/* 終了モード時は current 以外を即時非表示にし、mask を外した瞬間のチラつきを防ぐ。 */
+#yl-scroll-wrapper.finished .yl-line:not(.current) {
+  opacity: 0 !important;
+  transition: none !important;
+  /* Transitionなし＝即時 */
+  pointer-events: none;
+}
+
+/* --- ホバー時の文字ぼやけ対策（Windows用） --- */
+
+/* 1. ボタン類を常にGPUレイヤーに固定し、アニメーション時の描画モード切り替えを防ぐ */
+.yl-btn,
+#yl-toggle-btn,
+.yl-customize-btn {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  /* transition: all は再描画の負荷が高くぼやけの原因になるため、個別指定で上書き */
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* 2. ホバー時のtransformにも translateZ(0) を追加してピクセルを安定させる */
+#yl-toggle-btn:hover {
+  transform: scale(1.02) translateZ(0);
+}
+
+#yl-download-btn:hover {
+  transform: translateY(-1px) translateZ(0) !important;
+}

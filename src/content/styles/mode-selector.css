@@ -1,0 +1,361 @@
+/* このファイルはモード選択ボタンの可変幅レイアウトと音符演出を担当する。 */
+/* --- Mode Selector (Interruptible Dropdown) --- */
+#yl-mode-selector {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 2147483646;
+
+  /* Glassmorphism ベース */
+  background: rgba(20, 20, 20, 0.4);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  border-radius: 20px;
+  color: #fff;
+  pointer-events: auto;
+  overflow: hidden;
+  /* 中身が広がる時に角丸を維持する */
+  font-family: var(--yl-font-stack);
+
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.24s ease,
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+}
+
+#yl-mode-selector:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.yl-mode-header {
+  display: flex;
+  justify-content: space-between; /* 左側のグループと右の音符を離す */
+  align-items: center;
+  /* gap: 6px; */
+  padding: 8px 10px; /* 左右の余白を少し調整 */
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative; /* 子要素の基準に */
+}
+
+.yl-mode-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;        /* 余ったスペースをすべて占有 */
+  min-width: 0;   /* フレックスアイテムが縮めるようにする魔法のプロパティ */
+  overflow: hidden;
+  width: 0;       /* ボタンの横幅計算（width:auto）に自分のテキスト長を干渉させない */
+}
+
+#yl-mode-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip; /* 通常の「...」を消す */
+  font-size: 13px;
+  
+  /* 長いラベルでもボタン幅を押し広げず、末尾だけ自然にフェードさせる。 */
+  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+
+  /* ★追加: 文字がどれだけ長くても、親（ボタン本体）を押し広げないようにする */
+  display: block;
+}
+
+.yl-mode-chevron {
+  flex-shrink: 0; /* 音符マークが潰れないように固定 */
+  margin-left: auto;
+}
+
+/* grid-template-rows を使い、途中で再トグルされてもレイアウト崩れしない展開にする。 */
+.yl-mode-dropdown {
+  display: grid;
+  grid-template-rows: 0fr;
+  /* 閉じた状態 */
+  /* width ではなく rows を動かすことで、内部の auto height を自然に扱える。 */
+  transition: grid-template-rows 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* --- Mode Dropdown Animation with Blur & Mask --- */
+.yl-mode-dropdown-inner {
+  min-height: 0;
+  /* grid-template-rows 0fr を効かせるため必須 */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  /* 下からボケながら浮いてくる感じ */
+  opacity: 0;
+  transform: translateY(10px) scaleY(0.92);
+  transform-origin: top;
+  filter: blur(8px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.42s cubic-bezier(0.19, 1, 0.22, 1),
+    filter 0.42s cubic-bezier(0.19, 1, 0.22, 1);
+
+  mask-image: linear-gradient(to bottom,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 1) 55%,
+      rgba(0, 0, 0, 0.88) 72%,
+      rgba(0, 0, 0, 0.55) 86%,
+      rgba(0, 0, 0, 0.15) 100%);
+  -webkit-mask-image: linear-gradient(to bottom,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 1) 55%,
+      rgba(0, 0, 0, 0.88) 72%,
+      rgba(0, 0, 0, 0.55) 86%,
+      rgba(0, 0, 0, 0.15) 100%);
+}
+
+/* Active (開いた) 状態 */
+#yl-mode-selector.active .yl-mode-dropdown {
+  grid-template-rows: 1fr;
+  /* 中身の高さに合わせて滑らかに展開 */
+}
+
+#yl-mode-selector.active .yl-mode-dropdown-inner {
+  /* 開いた瞬間だけ mask を外し、項目全体をクリアに見せる。 */
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  filter: blur(0);
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.yl-mode-dropdown-inner::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  pointer-events: none;
+  background: linear-gradient(to top,
+      rgba(20, 20, 24, 0.28) 0%,
+      rgba(20, 20, 24, 0.14) 45%,
+      rgba(20, 20, 24, 0.00) 100%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0.9;
+  transition:
+    opacity 0.3s ease,
+    backdrop-filter 0.3s ease,
+    -webkit-backdrop-filter 0.3s ease;
+}
+
+#yl-mode-selector.active .yl-mode-dropdown-inner::after {
+  opacity: 0.18;
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+}
+
+#yl-mode-selector.note-active .yl-mode-chevron {
+  /* 音符ボタンから開いたことを色で残し、通常クリックと視覚差を作る。 */
+  color: #0A84FF;
+  transform: scale(1.1);
+}
+
+/* 矢印を反転 */
+
+/* --- Dropdown Options --- */
+.yl-mode-option {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yl-mode-option:hover {
+  background: rgba(10, 132, 255, 0.15);
+  color: #fff;
+}
+
+.yl-mode-option.selected {
+  color: #0A84FF;
+  font-weight: 700;
+  background: rgba(10, 132, 255, 0.05);
+}
+
+.yl-mode-option:last-child {
+  padding-bottom: 12px;
+}
+
+/* ========================================================= */
+/* 追加: Eclipse Icon Animation (モード選択ボタン用) */
+/* ========================================================= */
+.custom-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+#yl-mode-selector.active .custom-icon {
+  color: #0A84FF;
+  filter: drop-shadow(0 0 8px rgba(10, 132, 255, 0.5));
+}
+
+/* 音符アイコンは見た目より大きい hit area を持たせ、クリック取りこぼしを防ぐ。 */
+#yl-music-note-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;     /* 見えない当たり判定（クリックできる範囲）を広げる */
+    margin: -12px;     /* レイアウトが崩れないように相殺する */
+    margin-left: auto; /* 右端に固定 */
+    cursor: pointer;
+    position: relative;
+    z-index: 10;       /* モード選択ボタンより確実に手前に出す */
+    background-color: rgba(255, 255, 255, 0.001); /* 「面」を作るための透明色 */
+    border-radius: 50%;
+}
+
+/* ★箱(div)にマウスが乗ったら、中のアイコン(svg)を動かす */
+#yl-music-note-btn:hover .yl-music-note-icon {
+    transform: scale(1.1) rotate(5deg);
+    color: #0A84FF;
+}
+
+/* SVG自体はイベントを受け取らないようにする（透明な罠を完全無効化） */
+.yl-music-note-icon {
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease;
+    pointer-events: none !important; 
+}
+
+/* ★追加: SVG内の細かい線(path)が個別にクリック判定を持つのを防ぐ */
+.yl-music-note-icon * {
+    pointer-events: none;
+}
+
+.yl-music-note-icon:hover {
+    transform: scale(1.3) rotate(10deg);
+    color: #0A84FF; /* iOS Blue */
+}
+
+.icon-eclipse .circle-1,
+.icon-eclipse .circle-2 {
+  transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+#yl-mode-selector.active .icon-eclipse .circle-1 {
+  transform: translate(-3px, -2px);
+}
+
+#yl-mode-selector.active .icon-eclipse .circle-2 {
+  transform: translate(3px, 2px);
+}
+
+/* ========================================================= */
+/* 追加: Magic Note Particle Animations */
+/* ========================================================= */
+/* Floating Notes Particles */
+.yl-floating-note {
+  position: fixed;
+  z-index: 2147483647;
+  pointer-events: none;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+}
+
+.yl-floating-note svg {
+  width: 100%;
+  height: 100%;
+}
+
+.yl-note-anim-1 {
+  /* 3 種の timing を少しずつずらし、単調な扇状拡散に見えないようにする。 */
+  animation: floatNote1 1.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.yl-note-anim-2 {
+  animation: floatNote2 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation-delay: 0.1s;
+}
+
+.yl-note-anim-3 {
+  animation: floatNote3 1.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes floatNote1 {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5) rotate(-10deg);
+    opacity: 1;
+    color: #fff;
+  }
+
+  50% {
+    opacity: 1;
+    color: #0A84FF;
+  }
+
+  /* Blue */
+  100% {
+    transform: translate(calc(-50% + var(--note-tx, 45px)), calc(-50% + var(--note-ty, -70px))) scale(1.3) rotate(var(--note-rot, 25deg));
+    opacity: 0;
+    color: #0A84FF;
+  }
+}
+
+@keyframes floatNote2 {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+    opacity: 1;
+    color: #fff;
+  }
+
+  50% {
+    opacity: 1;
+    color: #AF52DE;
+  }
+
+  /* Purple */
+  100% {
+    transform: translate(calc(-50% + var(--note-tx, 80px)), calc(-50% + var(--note-ty, -40px))) scale(1) rotate(var(--note-rot, 45deg));
+    opacity: 0;
+    color: #AF52DE;
+  }
+}
+
+@keyframes floatNote3 {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5) rotate(10deg);
+    opacity: 1;
+    color: #fff;
+  }
+
+  50% {
+    opacity: 1;
+    color: #34C759;
+  }
+
+  /* Green */
+  100% {
+    transform: translate(calc(-50% + var(--note-tx, 60px)), calc(-50% + var(--note-ty, -90px))) scale(1.5) rotate(var(--note-rot, -20deg));
+    opacity: 0;
+    color: #34C759;
+  }
+}

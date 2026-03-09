@@ -1,0 +1,418 @@
+/* このファイルは Dynamic Island の開閉アニメーションと上部補助 UI の見た目を定義する。 */
+/* --- Dynamic Island Controls (Added) --- */
+#yl-island {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 2147483646;
+
+  /* Glassmorphism Base */
+  background: rgba(20, 20, 20, 0.4);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255, 255, 255, 0); */
+
+  height: 33px;
+  border-radius: 17px;
+
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+
+  /* Animation */
+  transition:
+    background 0.2s ease,
+    box-shadow 0.3s ease,
+    width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    overflow 0s;
+  /* ★追加: 閉じる時は即座にhiddenに戻す */
+  /* animation: yl-island-pulse 4s ease-in-out infinite; */
+
+  pointer-events: auto;
+  /* 閉じた状態では内部コントロールを確実に切り取る。 */
+  overflow: hidden;
+  max-width: 400px;
+}
+
+/* ★新規追加: 開いた時だけ解放するルール */
+#yl-island.is-open {
+  /* 開く途中はまだ hidden のままにして、内側の blur アニメをはみ出させない。 */
+  overflow: visible;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.3s ease,
+    width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    overflow 0s 0.4s;
+  /* ★追加: 0.4秒のアニメーションが終わってから解放 */
+}
+
+/* ★追加: 閉じ判定だけ広げる透明ゾーン */
+#yl-island-zone {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: auto;
+
+  /* 実体より広い hover 判定を持たせて、閉じる誤爆を減らす。 */
+  padding: 12px;
+
+  /* レイアウト上の見た目サイズを増やさないために相殺 */
+  margin: -12px;
+}
+
+#yl-island:hover {
+  /* animation: none; */
+  background: rgba(20, 20, 20, 0.4);
+  border-color: none;
+  box-shadow: none;
+}
+
+/* @keyframes yl-island-pulse {
+  0% { box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255, 255, 255, 0); }
+  50% { box-shadow: 0 4px 25px rgba(0,0,0,0.4), 0 0 0 1px rgba(255, 255, 255, 0.05); }
+  100% { box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255, 255, 255, 0); }
+} */
+
+/* Island Sections */
+.yl-island-section {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Hidden Controls (Offset, etc.) */
+.yl-island-controls {
+  display: grid;
+  grid-template-columns: 0fr;
+  opacity: 0;
+  overflow: hidden;
+  /* 展開中の中身を完全にはみ出させない */
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  mask-image: linear-gradient(to left, black 0%, black 100%);
+  -webkit-mask-image: linear-gradient(to left, black 0%, black 100%);
+
+  transition:
+    grid-template-columns 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    opacity 0.2s ease,
+    margin 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+
+  /* GPUアクセラレーションで描画を安定させる */
+  will-change: grid-template-columns, opacity, margin, padding;
+  transform: translateZ(0);
+}
+
+/* 開いた時の状態 */
+#yl-island.is-open .yl-island-controls {
+  grid-template-columns: 1fr;
+  /* 中身のサイズぴったりに滑らかに広がる */
+  opacity: 1;
+  margin-right: 4px;
+  padding-left: 6px;
+  padding-right: 4px;
+}
+
+/* ★追加: アニメーション時に中身がはみ出さないようにするインナー */
+.yl-island-controls-inner {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  transform: translateX(20px) scale(0.95);
+  filter: blur(4px);
+  transition:
+    transform 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    filter 0.3s ease,
+    opacity 0.3s ease;
+  opacity: 0;
+}
+
+/* アイランドが開いた時の内部の動き */
+#yl-island.is-open .yl-island-controls-inner {
+  /* 外枠の横幅展開と、内側の blur 解消を別レイヤーで見せる。 */
+  transform: translateX(0) scale(1);
+  filter: blur(0);
+  opacity: 1;
+}
+
+/* Mini Buttons inside Island */
+.yl-island-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+  font-family: sans-serif;
+}
+
+.yl-island-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.yl-island-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+/* Status Text */
+.yl-island-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(235, 235, 245, 0.6);
+  font-family: "SF Mono", Menlo, monospace;
+  margin: 0 2px;
+  min-width: 36px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.yl-island-status.active {
+  color: #0A84FF !important;
+  text-shadow: 0 0 10px rgba(10, 132, 255, 0.5);
+}
+
+/* ★追加: 区切り線 (Separator) */
+.yl-island-separator {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px 0 6px;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: scaleY(0);
+  transition:
+    opacity 0.2s ease,
+    transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* ★追加: アイランドが開いた時に、本来の姿に戻す */
+#yl-island.is-open .yl-island-separator {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Main Toggle inside Island */
+.yl-island-main {
+  position: relative;
+  z-index: 2;
+  /* 展開するコントロールより上に配置 */
+  background: transparent;
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  height: 100%;
+  border-radius: 14px;
+  transition: background 0.2s;
+}
+
+.yl-island-main:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.yl-bars-icon {
+  width: 16px;
+  height: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s var(--yl-ease-elastic);
+}
+
+.yl-bar {
+  width: 100%;
+  height: 1.25px;
+  background-color: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 2px;
+}
+
+.yl-bar::before {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 5px;
+  /* 縦棒の高さ */
+  background-color: #ffffffc7;
+  border-radius: 1px;
+
+  /* 1. 物理的な垂直中央寄せ（Transformに頼らない） */
+  top: 50%;
+  margin-top: -2.5px;
+  /* 高さ(6px)の半分をマイナスする */
+
+  /* 2. 水平の基準点 */
+  left: 50%;
+
+  /* 3. アニメーション（横移動のみに集中） */
+  /* 小さな縦棒の左右移動だけで「メニューが生きている」印象を作る。 */
+  transition: all 0.6s var(--yl-ease-elastic);
+  /* */
+  box-shadow: 0px 0px 8px rgba(255, 255, 255, 0.5);
+}
+
+/* 初期のつまみ位置 */
+.yl-bar-1::before {
+  transform: translateX(-3.5px);
+}
+
+.yl-bar-2::before {
+  transform: translateX(3px);
+}
+
+.yl-bar-3::before {
+  transform: translateX(-3.5px);
+}
+
+/* アイランドが開いた時（またはホバー時）のアニメーション */
+#yl-island.is-open .yl-bar::before,
+.yl-island-main:hover .yl-bar::before {
+  background-color: #fff;
+  box-shadow: 0px 0px 6px rgba(255, 255, 255, 0.5);
+}
+
+#yl-island.is-open .yl-bar-1::before,
+.yl-island-main:hover .yl-bar-1::before {
+  transform: translateX(3px);
+}
+
+#yl-island.is-open .yl-bar-2::before,
+.yl-island-main:hover .yl-bar-2::before {
+  transform: translateX(-4px);
+}
+
+#yl-island.is-open .yl-bar-3::before,
+.yl-island-main:hover .yl-bar-3::before {
+  transform: translateX(3px);
+}
+
+/* 軽い揺れのエフェクトを追加（クリック感） */
+.yl-island-main:active .yl-bars-icon {
+  transform: scale(0.9);
+}
+
+/* --- Instrumental (System Standby) Visualization --- */
+.yl-instrumental {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+  position: relative;
+  /* 間奏中も視線の中心を保つため、アイコンと波紋の原点を揃える。 */
+}
+
+.yl-inst-icon {
+  font-size: 24px;
+  color: var(--yl-accent);
+  opacity: 0.8;
+  z-index: 2;
+
+  /* 呼吸アニメーション */
+  animation: yl-system-breathe 3s ease-in-out infinite;
+}
+
+/* アイコンの後ろに広がる波紋（レーダーのような走査感） */
+.yl-instrumental::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--yl-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  z-index: 1;
+  animation: yl-radar-ping 3s ease-out infinite;
+}
+
+/* 2つ目の波紋（時間差で広がる） */
+.yl-instrumental::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--yl-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  z-index: 1;
+  animation: yl-radar-ping 3s ease-out infinite 1.5s;
+  /* 1.5秒遅れ */
+}
+
+@keyframes yl-system-breathe {
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.95);
+    filter: drop-shadow(0 0 0px rgba(10, 132, 255, 0));
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    /* 青い光彩を強く放つ */
+    filter: drop-shadow(0 0 15px rgba(10, 132, 255, 0.8));
+  }
+}
+
+@keyframes yl-radar-ping {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 0.6;
+    border-width: 2px;
+  }
+
+  100% {
+    width: 150px;
+    height: 150px;
+    /* 大きく広がる */
+    opacity: 0;
+    border-width: 0px;
+  }
+}
+
+/* 間奏行は少し高さを確保してゆったり見せる */
+.yl-line:has(.yl-instrumental) {
+  margin: 6vh 0;
+}
+
+/* ★追加: Mask Layer */
+#yl-mask-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* マウスイベントは通過させ、mask-image / clip-path は JS が visibleLines に応じて更新する。 */
+}

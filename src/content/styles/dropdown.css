@@ -1,0 +1,257 @@
+/* このファイルは custom dropdown の開閉・ハイライト・上開き判定後の見た目を持つ。 */
+/* --- Data Cartridge Dropdowns (moved from JS) --- */
+.yl-dropdown-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.yl-dropdown-label {
+  font-size: 11px;
+  color: rgba(235, 235, 245, 0.6);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.yl-custom-select {
+  /* テキストエリアと同じ「凹み」と「深淵」の表現 */
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 14px;
+
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+
+  /* 内側の影で奥行きを出す */
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.yl-custom-select:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+/* 展開時のメニュー: ホログラフィックな浮遊感 */
+.yl-select-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+
+  background: rgba(25, 25, 30, 0.95);
+  /* ほぼ不透明だが、かすかに透ける */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow:
+    0 10px 40px -5px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(0, 0, 0, 0.3);
+
+  z-index: 2147483647;
+  /* モーダル外へはみ出しても埋もれないよう最前面に固定する。 */
+  max-height: 240px;
+  overflow-y: auto;
+
+  display: none;
+  opacity: 0;
+  scale: 1 0.25;
+  translate: 0 calc(var(--pads) * -2);
+  /* 上端起点の拡縮にすることで、select 本体に貼り付いたまま開く印象を保つ。 */
+  transform-origin: center top;
+
+  transition-property: scale, translate, opacity, display;
+  transition-timing-function: var(--spring);
+  /* transition-duration: 0.66s; */
+  transition-duration: 0.52s;
+  transition-behavior: allow-discrete;
+
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* --- Drop-up (上開き) 用のスタイル --- */
+.yl-select-options.drop-up {
+  top: auto;
+  bottom: calc(100% + 6px); /* セレクトボックスの上側に配置 */
+  transform-origin: center bottom; /* アニメーションの起点を下端に変更 */
+  translate: 0 calc(var(--pads) * 2); /* 閉じた状態の待機位置を上にずらす */
+}
+
+/* 上開きで開いた状態 */
+.yl-select-options.drop-up.open {
+  translate: 0 0;
+}
+
+/* 上開きのアニメーション開始時の状態 */
+@starting-style {
+  .yl-select-options.drop-up.open {
+    opacity: 0;
+    scale: 1 0.25;
+    translate: 0 calc(var(--pads) * 2);
+    display: block;
+  }
+}
+
+.yl-select-options.open {
+  opacity: 1;
+  scale: 1 1;
+  translate: 0 0;
+  display: block;
+}
+
+@starting-style {
+  .yl-select-options.open {
+    opacity: 0;
+    scale: 1 0.25;
+    translate: 0 calc(var(--pads) * -2);
+    display: block;
+  }
+}
+
+/* --- 追加: スライディングハイライト用のスタイル --- */
+.yl-option-highlight {
+  position: absolute;
+  left: 4px;
+  /* 左右に少し余白を持たせる */
+  width: calc(100% - 8px);
+  background: rgba(10, 132, 255, 0.15);
+  /* 青いハイライト色 */
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  /* クリックを邪魔しない */
+  z-index: 0;
+  /* hover 中の項目を「選択しそうな候補」として追従表示する。 */
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+.yl-option {
+  position: relative;
+  /* z-indexを効かせるため */
+  z-index: 1;
+  /* ハイライトより前面に文字を出す */
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* border-bottom: 1px solid rgba(255, 255, 255, 0.03); */
+  background: transparent !important;
+  /* 背景が重ならないように透明化 */
+
+  translate: 0 20%;
+  opacity: 0;
+
+  /* open 時は項目ごとに少し遅延させ、リストが下へ流れ込む見え方を作る。 */
+  transition-property: translate, opacity, color, padding;
+  transition-timing-function: var(--spring);
+  transition-duration: 0.75s;
+  transition-delay: 0.05s;
+  transition-behavior: allow-discrete;
+}
+
+.yl-select-options.open .yl-option {
+  translate: 0 0;
+  opacity: 1;
+}
+
+@starting-style {
+  .yl-select-options.open .yl-option {
+    translate: 0 20%;
+    opacity: 0;
+  }
+}
+
+.yl-select-options .yl-option:nth-child(2) {
+  transition-delay: 0.05s;
+}
+
+.yl-select-options .yl-option:nth-child(3) {
+  transition-delay: 0.1s;
+}
+
+.yl-select-options .yl-option:nth-child(4) {
+  transition-delay: 0.15s;
+}
+
+.yl-select-options .yl-option:nth-child(5) {
+  transition-delay: 0.2s;
+}
+
+.yl-select-options .yl-option:nth-child(6) {
+  transition-delay: 0.25s;
+}
+
+.yl-select-options .yl-option:nth-child(7) {
+  transition-delay: 0.3s;
+}
+
+.yl-select-options .yl-option:nth-child(8) {
+  transition-delay: 0.35s;
+}
+
+.yl-select-options .yl-option:nth-child(9) {
+  transition-delay: 0.4s;
+}
+
+.yl-select-options .yl-option:nth-child(10) {
+  transition-delay: 0.45s;
+}
+
+/* .yl-option:last-child { border-bottom: none; } */
+
+.yl-option:hover {
+  /*background: rgba(10, 132, 255, 0.15); /* 青いハイライト */
+  color: #fff;
+  padding-left: 18px;
+  /* 少し右に動く */
+}
+
+.yl-option.selected {
+  color: #0A84FF;
+  font-weight: 700;
+  /* background: rgba(10, 132, 255, 0.05); */
+}
+
+/* 追加推奨：普段はチェックマークを見えなくする */
+.yl-option .yl-option-check {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+/* 追加推奨：selectedがついた時だけ見えるようにする */
+.yl-option.selected .yl-option-check {
+  /* 選択状態は色だけでなくチェックでも伝え、翻訳言語変更時の誤認を減らす。 */
+  opacity: 1;
+}
+
+/* スクロールバーも美しく */
+.yl-select-options::-webkit-scrollbar {
+  /* width: 4px; */
+  display: none; /* */
+}
+
+.yl-select-options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}

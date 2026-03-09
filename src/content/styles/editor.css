@@ -1,0 +1,327 @@
+/* このファイルは編集パネルとトーストなど、入力系 UI の質感をまとめる。 */
+/* --- The Editor Panel (Cyber-Glass HUD) --- */
+#yl-editor {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+  width: 340px;
+
+  /* ベース: より深く、青みを含んだダークガラス */
+  background: rgba(15, 19, 25, 0.65);
+  backdrop-filter: blur(50px) saturate(200%);
+  -webkit-backdrop-filter: blur(50px) saturate(200%);
+
+  border-radius: 24px;
+  padding: 24px;
+  z-index: 2147483647;
+  color: var(--yl-text-primary);
+  pointer-events: auto;
+
+  /* Animation setup */
+  opacity: 0;
+  transform: scale(0.9) translateY(-10px);
+  transform-origin: top right;
+  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  visibility: hidden;
+
+  /* ★ここが重要: 複数の影とボーダーで「厚み」と「発光」を表現 */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    /* 内側のハイライト（エッジの反射） */
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 20px rgba(10, 132, 255, 0.05);
+  /* 外側の影（浮遊感） */
+  /* 0 20px 60px -10px rgba(0, 0, 0, 0.7); */
+}
+
+#yl-editor.active {
+  /* active クラスでだけ実体化し、DOM 常駐でも非表示時のレイアウト影響を消す。 */
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  visibility: visible;
+}
+
+/* タイトルをホログラムっぽく */
+#yl-editor h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
+  /* 青いグロー */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* タイトルの横に小さな装飾（ステータスランプ的なもの）を追加 */
+#yl-editor h3::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  background: #0A84FF;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #0A84FF;
+}
+
+.yl-textarea-wrap {
+  margin-inline: -3px;
+  /* テキストエリアだけ左右に少し逃がし、内側の影が窮屈に見えないようにする。 */
+}
+
+/* --- Deep Space Console Input --- */
+#yl-textarea {
+  width: 100%;
+  height: 260px;
+  box-sizing: border-box;
+
+  /* 背景をパネルより一段暗くして「凹み」を作る */
+  background: rgba(0, 0, 0, 0.4);
+
+  /* デフォルトの境界線は薄く */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  /* パネルに合わせて少し丸く */
+
+  color: rgba(255, 255, 255, 0.95);
+  padding: 16px;
+
+  font-family: "SF Mono", "Menlo", monospace;
+  /* 等幅フォントでテック感を強調 */
+  font-size: 12px;
+  line-height: 1.6;
+  resize: none;
+  margin-bottom: 20px;
+
+  /* 内側の影で奥行きを強調 */
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+
+  transition: all 0.2s ease-in-out;
+}
+
+/* フォーカス時: 境界線が光り、入力への没入感を高める */
+#yl-textarea:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(10, 132, 255, 0.6);
+  /* 青く光る */
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.8),
+    0 0 0 4px rgba(10, 132, 255, 0.15);
+  /* フォーカスリング */
+}
+
+/* スクロールバーもUIに統合 */
+#yl-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+#yl-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#yl-textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+#yl-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Buttons */
+.yl-btn {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--yl-font-stack);
+}
+
+/* --- Secondary Button: Crystal Ghost --- */
+#yl-download-btn {
+  /* 背景は透明、ボーダーで魅せる */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+
+  border-radius: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* アイコン（SVG）を入れるスペースがあるなら、光らせる */
+#yl-download-btn svg {
+  stroke: currentColor;
+  opacity: 0.8;
+}
+
+#yl-download-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  /* 白くふわっと光る */
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#yl-download-btn:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+#yl-toolbar {
+  /* Apply を主操作として広め、Export は補助操作として細めに割り当てる。 */
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+}
+
+/* 編集頻度の高い設定をエディタ直下に残し、詳細設定は別モーダルへ逃がす。 */
+/* Settings */
+.yl-settings-group {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.yl-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--yl-text-secondary);
+}
+
+/* --- Laser Track Sliders --- */
+.yl-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 140px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  /* 暗いレール */
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+  /* 内側の溝を作る */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ツマミ部分: 光るオーブ */
+.yl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: grab;
+  /* 強い光を放つ */
+  box-shadow:
+    0 0 8px rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+  margin-top: -1px;
+  /* 微調整 */
+  transition: transform 0.1s;
+}
+
+.yl-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #fff;
+}
+
+.yl-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+  background: #e0e0e0;
+}
+
+/* --- Holographic Toast Notification --- */
+#yl-offset-toast {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  right: auto;
+
+  /* ガラスの質感に変更 */
+  background: rgba(15, 19, 25, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  /* 青白い発光ボーダー */
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(10, 132, 255, 0.2),
+    /* 外側のグロー */
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* 上部のハイライト */
+
+  border-radius: 30px;
+  padding: 10px 24px;
+
+  color: #fff;
+  font-family: var(--yl-font-mono);
+  /* 通知は情報の刻印なので等幅フォントが良い */
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+
+  /* アニメーション: ふわっと浮き上がりながら現れる */
+  /* 常に同じ原点から出すため、left:50% と translateX(-50%) をセットで使う。 */
+  transform: translateX(-50%) translateY(-20px) scale(0.95);
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+#yl-offset-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+  /* 表示中はボーダーが少し強く光る */
+  border-color: rgba(10, 132, 255, 0.6);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(10, 132, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Drop Zone */
+#yl-drop-zone {
+  position: absolute;
+  inset: 20px;
+  background: rgba(10, 132, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border: 2px dashed var(--yl-accent);
+  border-radius: 24px;
+  z-index: 200;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+#yl-drop-zone.active {
+  display: flex;
+}

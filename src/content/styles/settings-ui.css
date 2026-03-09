@@ -1,0 +1,470 @@
+/* このファイルは設定モーダル周辺の補助 UI とアプリ OFF 時の制御をまとめる。 */
+/* ★追加: Icon Button (Editor内の設定ボタン用) */
+.yl-icon-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yl-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ★追加: Settings Modal */
+
+
+.yl-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.yl-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.yl-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.yl-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.yl-control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.yl-val-badge {
+  font-size: 11px;
+  background: var(--yl-accent);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  min-width: 24px;
+  text-align: center;
+}
+
+.yl-control-row {
+  display: flex;
+  align-items: center;
+}
+
+.yl-sub-label {
+  font-size: 10px;
+  color: var(--yl-text-secondary);
+  width: 30px;
+  text-align: center;
+}
+
+.yl-desc {
+  font-size: 11px;
+  color: var(--yl-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.yl-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Slider Customization (共通) */
+/* --- Reset Button (Hover Only) --- */
+.yl-reset-mini {
+  background: transparent;
+  border: none;
+  color: var(--yl-text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* デフォルトでは隠しておく */
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: all 0.2s ease;
+
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* 親要素にマウスが乗った時だけ表示 */
+.yl-setting-item:hover .yl-reset-mini,
+.yl-control-label:hover .yl-reset-mini {
+  opacity: 0.5;
+  /* 控えめに表示 */
+  transform: translateX(0);
+}
+
+/* ボタン自体にマウスが乗ったら強調 */
+.yl-reset-mini:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.yl-reset-mini svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Responsive Adjustments (Normal View) --- */
+/* 動画プレーヤーの幅が900px未満（通常モード等）の場合に適用 */
+@container (max-width: 1200px) {
+  #yl-editor {
+    zoom: 0.93;
+    /* これだけで全要素が70%のサイズになります */
+  }
+
+  #yl-settings-modal {
+    zoom: 0.93;
+  }
+
+}
+
+/* --- Customize Button (Header Action) --- */
+.yl-customize-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+
+  padding: 6px 12px;
+  border-radius: 20px;
+  /* カプセル型 */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yl-customize-btn:hover {
+  border-color: rgba(10, 132, 255, 0.5);
+  /* 青枠になる */
+  color: #0A84FF;
+  /* 文字も青くなる */
+  background: rgba(10, 132, 255, 0.05);
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.1);
+}
+
+/* --- Dragging State --- */
+.yl-dragging {
+  transition: none !important;
+  cursor: grabbing !important;
+}
+
+/* ヘッダー部分はドラッグ可能であることを示す */
+.yl-modal-header,
+#yl-editor h3 {
+  cursor: grab;
+}
+
+/* 音符スイッチ用 */
+#yl-power-switch {
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+#yl-power-switch svg {
+  /* 既存より少し太くして存在感を出す */
+  stroke-width: 2.5;
+}
+
+/* ONになった時の光る演出 */
+#yl-power-switch.active svg {
+  filter: drop-shadow(0 0 8px rgba(10, 132, 255, 0.6));
+  transform: scale(1.05);
+}
+
+#yl-power-switch:active {
+  transform: scale(0.9);
+}
+
+/* アプリ OFF 時は起動ボタンだけ残し、誤操作につながる UI を一括で隠す。 */
+.yl-app-disabled #yl-island,
+.yl-app-disabled #yl-editor,
+.yl-app-disabled #yl-container,
+.yl-app-disabled #yl-settings-modal,
+.yl-app-disabled #yl-bg-plate,
+.yl-app-disabled #yl-mode-selector {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 起動ボタン (オフの時) のスタイル変化 */
+.yl-app-disabled #yl-toggle-btn {
+  background: rgba(10, 132, 255, 0.2);
+  /* 起動待機っぽい青 */
+  box-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
+  /* ポワンと光らせる */
+  border-color: rgba(10, 132, 255, 0.5);
+  opacity: 1 !important;
+  /* 強制表示 */
+}
+
+/* オフ時はテキストを変えるなら擬似要素などで対応可能ですが、今回はシンプルに */
+
+/* --- 赤い電源ボタン (Dynamic Island内) --- */
+#yl-power-off-btn {
+  /* 普段は地味な色 (他のアイコンと同じ白系) */
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  /* 他のボタンとサイズを合わせる */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 赤いガラス（背景・ボーダー）を削除 */
+  background: transparent;
+  border: none;
+
+  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  margin-right: 2px;
+  cursor: pointer;
+  opacity: 0.8;
+  /* 少し控えめに */
+}
+
+#yl-power-off-btn:hover {
+  background: #ff453a;
+  color: white;
+  box-shadow: 0 0 12px rgba(255, 69, 58, 0.6);
+  transform: scale(1.1);
+}
+
+#yl-power-off-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 5px rgba(255, 69, 58, 0.4);
+}
+
+#yl-power-off-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+/* ========================================================= */
+/* Apply Button (Refined & Elegant) */
+/* ========================================================= */
+
+#yl-save-btn {
+  position: relative;
+  overflow: hidden; /* 光のエフェクトを内側に留める */
+  
+  /* 派手なアニメーションを廃止し、上質で分かりやすい青のグラデーションに */
+  background: #0A84FF;
+  background-image: linear-gradient(135deg, #0A84FF 0%, #0070DF 100%);
+  
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--yl-font-stack);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  
+  transform-origin: center center;
+  background-color: #0A84FF; /* 基礎の色を設定 */
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1); /* 少し時間を長めに */
+  z-index: 1;
+  
+  /* 影も控えめにし、上品な立体感だけを残す */
+  box-shadow:
+    0 4px 12px rgba(10, 132, 255, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+/* 成功時の緑色を「上に重なるレイヤー」として作成 */
+#yl-save-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  opacity: 0; /* 普段は透明 */
+  transition: opacity 0.3s ease; /* ここで滑らかさを制御 */
+  z-index: 1;
+}
+
+#yl-save-btn.is-success::before {
+  opacity: 1; /* 成功時だけ浮き上がる */
+}
+
+/* --- Hover: 浮かび上がらず、滑らかにスケールアップ --- */
+#yl-save-btn:hover {
+  /* translateYを削除し、純粋な拡大のみに */
+  transform: scale(1.03) translateZ(0) !important; 
+
+  letter-spacing: 0.06em;
+  
+  /* 影のY軸（4px）はそのままに、ぼかし（12px→20px）と濃さだけを広げる */
+  box-shadow:
+    0 4px 20px rgba(10, 132, 255, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+/* --- Active: 押し込み感 --- */
+#yl-save-btn:active {
+  transform: scale(0.96) translateZ(0) !important;
+  letter-spacing: 0.04em; /* 押し込んだ時は少し戻す */
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+  filter: brightness(0.95);
+}
+
+/* --- Success State (モーフィング) --- */
+/* (既存のまま) */
+#yl-save-btn.is-success {
+  /* JS 側で width を固定したままここへ入るので、緑化中にボタン幅は揺れない。 */
+  background-image: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  pointer-events: none;
+  box-shadow: 0 0 20px rgba(52, 199, 89, 0.6);
+}
+
+#yl-save-btn span {
+  display: inline-block;
+  position: relative;
+  z-index: 2; /* 光のボーダーより前面に */
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), 
+              opacity 0.3s ease,
+              letter-spacing 0.4s ease;
+}
+
+#yl-save-btn.is-success::after {
+  /* 成功時のチェックはテキスト退避後に中央へ出す。 */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg) scale(0);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1) 0.1s;
+}
+
+/* チェックマークの出現を調整 */
+#yl-save-btn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg) scale(0);
+  opacity: 0;
+  z-index: 3;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 少し弾むように */
+}
+
+#yl-save-btn.is-success span {
+  /* 文言は上へ逃がして透明化し、同じ面積のままチェックへ置き換える。 */
+  transform: translateY(-35px);
+  opacity: 0;
+}
+
+#yl-save-btn.is-success::after {
+  transform: translate(-50%, -60%) rotate(45deg) scale(1.5);
+  opacity: 1;
+}
+
+/* ========================================================= */
+/* Spinning Light Border Effect (Apply & Saveボタン用) */
+/* ========================================================= */
+/* こちらは元の美しいロジックをそのまま活かします */
+
+.yl-btn-outline {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0; 
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+}
+
+.yl-btn-outline::before {
+  content: "";
+  position: absolute;
+  width: 250%; 
+  aspect-ratio: 1 / 1;
+  top: 50%;
+  left: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 80%,
+    rgba(255, 255, 255, 0.9) 95%,
+    transparent 100%
+  );
+  animation: yl-spin 3s linear infinite;
+}
+
+#yl-save-btn:hover .yl-btn-outline {
+  /* hover 時だけ外周のスピン光を出し、通常時の情報量を抑える。 */
+  opacity: 1;
+}
+
+#yl-save-btn.is-success .yl-btn-outline {
+  opacity: 0;
+}
+
+@keyframes yl-spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
