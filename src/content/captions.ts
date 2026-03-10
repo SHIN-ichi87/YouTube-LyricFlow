@@ -16,6 +16,7 @@ async function fetchWatchPageHtml() {
 }
 
 // YouTube の字幕トラック名は simpleText / runs の両系統があるため、ここで吸収する。
+// 動画によって提供元や自動生成かどうかの内部構造が異なり、一方の形式だけを前提とすると名前が取得できずエラーとなるため。
 function getTrackLabel(track: CaptionTrack): string {
   if (track.name.simpleText) return track.name.simpleText;
   if (track.name.runs?.length) return track.name.runs.map((run) => run.text).join('');
@@ -23,6 +24,7 @@ function getTrackLabel(track: CaptionTrack): string {
 }
 
 // カスタムドロップダウンは DOM の selected 状態も手動で同期する必要がある。
+// ネイティブのselect要素でないため状態が変わっても見た目は自動反映されず、選択したのに前の言語名が表示されたままになる等のバグを防ぐため。
 function updateDropdownUI() {
   const primaryValue = state.userSettings.primaryLang || 'auto';
   const primaryContainer = byId<HTMLDivElement>('yl-primary-select')?.parentElement as HTMLDivElement | null;
@@ -82,6 +84,7 @@ export function refreshPrimaryDropdown() {
 }
 
 // watch ページの HTML から captionTracks を拾い、UI に出せる選択肢を再構築する。
+// 非公開APIであるtimedtextを毎度叩くよりも、初期HTML内にあるメタデータを利用する方がネットワーク負荷が低くブロックされにくいため。
 export async function updateTrackListUI() {
   if (state.availableTracks.length > 0) {
     // 既に検出済みなら fetch を増やさず、UI 同期だけで済ませる。
@@ -127,6 +130,7 @@ export async function checkIsMusicVideo(videoId: string) {
 }
 
 // 実際に再生で使われた timedtext URL を監視して、署名付き URL を再利用できるようにする。
+// YouTubeの字幕URLは動的生成されるトークンを含んでおり、推測して自前で組み立てるとBot判定されてアクセスが拒否されるため。
 export function startTimedTextObserver() {
   // PerformanceObserver は 1 回だけ起動し、以後は最新の字幕 URL 観測に使い回す。
   if (state.timedTextObserver) return;
@@ -171,6 +175,7 @@ export function findTimedTextUrl() {
 }
 
 // URL がまだ観測できていない動画では、一度字幕ボタンを押してリクエストを発生させる。
+// デフォルトで字幕オフのユーザーの場合、パフォーマンス監視だけでは永遠に字幕URLを取得できず機能が死んでしまうため。
 export function triggerCaptionFetch() {
   return new Promise<string | null>((resolve) => {
     const button = document.querySelector<HTMLElement>('.ytp-subtitles-button');
@@ -195,6 +200,7 @@ export function triggerCaptionFetch() {
 }
 
 // YouTube の timedtext は JSON / XML の両方が来るため、Content-Type と内容の両方で判定する。
+// 古い動画ではXML、新しい動画では独自のjson3形式と仕様が混在しており、MIMEタイプすら正しく設定されていないケースもあるため。
 export async function fetchAndParseTimedText(url: string) {
   if (!url) return '';
 
@@ -218,6 +224,7 @@ export async function fetchAndParseTimedText(url: string) {
 }
 
 // 自動取り込みは「現在有効な字幕 URL を土台に lang / tlang を差し替える」基準版戦略を守る。
+// 正規に取得した1つの成功URLさえあれば、パラメータ改変だけでYouTube公式の翻訳エンジンを通した多言語字幕を安全に引っ張ってこれるため。
 export async function tryAutoImportCaptions(force = false) {
   const videoId = new URLSearchParams(window.location.search).get('v');
   if (!videoId) return;

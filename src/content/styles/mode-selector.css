@@ -68,7 +68,7 @@
   mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
 
-  /* ★追加: 文字がどれだけ長くても、親（ボタン本体）を押し広げないようにする */
+  /* 長い文字が親要素を押し広げるのを防ぐ */
   display: block;
 }
 
@@ -197,7 +197,7 @@
 }
 
 /* ========================================================= */
-/* 追加: Eclipse Icon Animation (モード選択ボタン用) */
+/* Eclipse Icon Animation (モード選択ボタン用) */
 /* ========================================================= */
 .custom-icon {
   width: 14px;
@@ -230,7 +230,7 @@
     border-radius: 50%;
 }
 
-/* ★箱(div)にマウスが乗ったら、中のアイコン(svg)を動かす */
+/* ホバー時にアイコンをアニメーションさせる */
 #yl-music-note-btn:hover .yl-music-note-icon {
     transform: scale(1.1) rotate(5deg);
     color: #0A84FF;
@@ -242,7 +242,7 @@
     pointer-events: none !important; 
 }
 
-/* ★追加: SVG内の細かい線(path)が個別にクリック判定を持つのを防ぐ */
+/* SVG子要素の個別のクリック判定を無効化 */
 .yl-music-note-icon * {
     pointer-events: none;
 }
@@ -266,7 +266,7 @@
 }
 
 /* ========================================================= */
-/* 追加: Magic Note Particle Animations */
+/* Magic Note Particle Animations */
 /* ========================================================= */
 /* Floating Notes Particles */
 .yl-floating-note {

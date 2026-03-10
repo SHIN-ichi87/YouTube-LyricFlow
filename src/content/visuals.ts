@@ -7,6 +7,7 @@ interface MaskStyles {
 }
 
 // オフセット表示は Dynamic Island 内の単一ラベルを更新するだけに絞る。
+// 高頻度で更新される数値のため、DOM全体の再レンダリングを回避してパフォーマンスの低下を抑えるため。
 export function updateIslandStatus() {
   const statusEl = byId<HTMLSpanElement>('yl-island-text');
   if (!statusEl) return;
@@ -23,6 +24,7 @@ export function updateIslandStatus() {
 }
 
 // Visible Lines の badge は、スライダー上限を超える状態を "Max" に丸めて表示する。
+// 内部的な制限解除フラグの数値をそのまま見せるより、ユーザーにとって直感的な「無制限」という表現にするため。
 export function updateLinesBadge() {
   const el = byId<HTMLSpanElement>('yl-lines-val');
   if (!el) return;
@@ -88,6 +90,7 @@ export function applyMaskLayer(maskLayer: HTMLDivElement | null) {
 }
 
 // 見た目に関する設定は wrapper / plate / mask を同じタイミングで更新する。
+// フォントと背景板が別々のタイミングでリフローされると、UI全体が一瞬崩れて明滅するような視覚的ノイズを避けるため。
 export function applyVisualSettings() {
   const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
   const maskLayer = byId<HTMLDivElement>('yl-mask-layer');

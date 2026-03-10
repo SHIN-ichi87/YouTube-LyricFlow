@@ -1,8 +1,10 @@
 // マークアップは基準版の id / class をそのまま保ち、イベントは ui.tsx 側で束ねる。
+// JSX内で直接onclick事を書くと状態管理や再レンダリング時のイベント破棄が煩雑になり、純粋なビューとしての保守性が下がるため。
 export function DynamicIslandMarkup() {
   return (
     <div id="yl-island">
-      {/* 展開時にだけ見える補助操作群。通常時は main セクションだけを見せる。 */}
+      {/* 展開時にだけ見える補助操作群。通常時は main セクションだけを見せる。
+          画面の限られた領域を占有しすぎないよう、必要な機能だけをホバーで引き出せる設計にするため。 */}
       <div class="yl-island-section yl-island-controls">
         <div class="yl-island-controls-inner">
           <button class="yl-island-btn" id="yl-power-off-btn" title="Turn Off">
@@ -40,7 +42,8 @@ export function DynamicIslandMarkup() {
         </div>
       </div>
 
-      {/* 常時見えているメイン入口。クリック先の責務は ui.tsx 側で配線する。 */}
+      {/* 常時見えているメイン入口。クリック先の責務は ui.tsx 側で配線する。
+          ここでは純粋なUI部品としての構造定義に専念し、ビジネスロジックの混入を防ぐため。 */}
       <div class="yl-island-section yl-island-main" id="yl-island-toggle" title="Menu">
         <div class="yl-bars-icon">
           <div class="yl-bar yl-bar-1"></div>
@@ -53,6 +56,7 @@ export function DynamicIslandMarkup() {
 }
 
 // モード選択肢はまだダミー表示だが、DOM 構造は基準版と一致させておく。
+// 後日「カラオケモード」などの新機能を単体追加する際、CSSやアニメーションのレイアウト調整を最小限で済ませるための足場。
 export function ModeSelectorMarkup() {
   return (
     <>
@@ -91,6 +95,7 @@ export function ModeSelectorMarkup() {
 }
 
 // エディタ本体は「保存・書き出し・字幕言語・文字調整」を一画面に集約する。
+// オフセットなど見た目の微調整（結果）と、LRC自体のデータ編集（原因）を同じ視界内でシームレスに行き来できるようにするため。
 export function EditorMarkup({ fontSize, lineHeight }: { fontSize: number | string; lineHeight: number | string }) {
   return (
     <>
@@ -154,6 +159,7 @@ export function EditorMarkup({ fontSize, lineHeight }: { fontSize: number | stri
 }
 
 // 設定モーダルは見た目専用の追加設定だけを持ち、歌詞本文編集とは分離する。
+// すべての設定をエディタパネルに詰め込むと画面が圧迫され、肝心のテキスト編集用エリアが狭くなってしまう使いづらさを防ぐため。
 export function SettingsModalMarkup() {
   return (
     <>

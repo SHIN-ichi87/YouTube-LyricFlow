@@ -24,7 +24,7 @@
   transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
   visibility: hidden;
 
-  /* ★ここが重要: 複数の影とボーダーで「厚み」と「発光」を表現 */
+  /* 複数の影とボーダーで立体感と発光を表現 */
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     /* 内側のハイライト（エッジの反射） */
@@ -56,7 +56,7 @@
   gap: 8px;
 }
 
-/* タイトルの横に小さな装飾（ステータスランプ的なもの）を追加 */
+/* タイトル横のステータスランプ装飾 */
 #yl-editor h3::before {
   content: '';
   display: block;
@@ -259,7 +259,7 @@
   left: 50%;
   right: auto;
 
-  /* ガラスの質感に変更 */
+  /* ガラスの質感 */
   background: rgba(15, 19, 25, 0.85);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);

@@ -88,7 +88,7 @@
 .yl-select-options.drop-up {
   top: auto;
   bottom: calc(100% + 6px); /* セレクトボックスの上側に配置 */
-  transform-origin: center bottom; /* アニメーションの起点を下端に変更 */
+  transform-origin: center bottom; /* アニメーションの起点を下端に指定 */
   translate: 0 calc(var(--pads) * 2); /* 閉じた状態の待機位置を上にずらす */
 }
 
@@ -123,7 +123,7 @@
   }
 }
 
-/* --- 追加: スライディングハイライト用のスタイル --- */
+/* --- スライディングハイライト用のスタイル --- */
 .yl-option-highlight {
   position: absolute;
   left: 4px;
@@ -233,15 +233,15 @@
   /* background: rgba(10, 132, 255, 0.05); */
 }
 
-/* 追加推奨：普段はチェックマークを見えなくする */
+/* デフォルトはチェックマークを非表示 */
 .yl-option .yl-option-check {
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-/* 追加推奨：selectedがついた時だけ見えるようにする */
+/* 選択時のみチェックマークを表示 */
 .yl-option.selected .yl-option-check {
-  /* 選択状態は色だけでなくチェックでも伝え、翻訳言語変更時の誤認を減らす。 */
+  /* 選択状態を視覚的に明記し、誤認を防ぐ */
   opacity: 1;
 }
 

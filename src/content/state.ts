@@ -57,9 +57,10 @@ export interface OutsideClickBinding {
 }
 
 // 基準版のグローバル変数をそのまま集約した共有状態。
-// DOM id、ストレージキー、デフォルト値の互換性はここを起点に守る。
+// DOM id、ストレージキー、デフォルト値の互換性はここを起点に守る。旧バージョンからのデータ引き継ぎで不整合を起こさないための措置。
 export const state = {
   // 現在の歌詞データと、ユーザーが与えた全体オフセット。
+  // リフレッシュレートの違いなどで動画時間と歌詞が微妙にずれる環境でも、ユーザー自身で手軽に微調整できるようにするため。
   lyricsData: [] as LyricsLine[],
   globalOffset: 0,
   // エディタ / 設定モーダルの開閉状態。
@@ -67,6 +68,7 @@ export const state = {
   isSettingsOpen: false,
   offsetToastTimer: null as number | null,
   // 手動スクロールやドラッグ中は自動追従を止めるための操作状態。
+  // ユーザーが歌詞を遡って読んでいる最中に、再生中の現在位置へ強制的にスクロールされてしまうストレスを防ぐため。
   isUserInteracting: false,
   interactionTimer: null as number | null,
   manualScrollOffset: 0,
@@ -80,6 +82,7 @@ export const state = {
   availableTracks: [] as CaptionTrack[],
   rawSubtitleData: [] as RawSubtitleLine[],
   // 表示設定はストレージ永続化の対象で、未保存項目はこのデフォルト値が基準になる。
+  // 初回起動時や新規設定項目が追加されたアップデート直後でも、表示が壊れないよう安全なフォールバックを確保する意図。
   userSettings: {
     isEnabled: false,
     fontSize: 28,

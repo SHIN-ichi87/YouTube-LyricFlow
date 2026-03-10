@@ -26,7 +26,7 @@
   border-radius: 24px;
   z-index: 2147483647;
 
-  /* ★重要: 小さくなった時にはみ出た中身を切り取る */
+  /* 閉口時はみ出た内容を隠蔽 */
   /* 開閉アニメ中も中身が外へ漏れず、「箱が育つ」見え方を優先する。 */
   overflow: hidden;
 
@@ -35,7 +35,7 @@
   visibility: hidden;
   transform: translate(-50%, -50%) scale(0.92);
 
-  /* ★変更: 閉じる時のアニメーション設定 */
+  /* 閉じる時のアニメーション設定 */
   /* すべての時間を合わせ、visibilityのみ step-end (アニメーション終了後にhidden) にする */
   transition:
     opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1),
@@ -44,7 +44,7 @@
     max-height 0.3s cubic-bezier(0.19, 1, 0.22, 1),
     padding 0.3s cubic-bezier(0.19, 1, 0.22, 1),
     visibility 0.3s step-end;
-  /* ← これが重要：0.3秒待ってからhiddenにする */
+  /* 0.3秒遅延後にhiddenへと遷移させる */
 
   color: var(--yl-text-primary);
   pointer-events: auto;
@@ -76,7 +76,7 @@
     visibility 0s step-start;
 }
 
-/* ★追加: 中身が崩れないように固定幅を持たせる */
+/* 内容のレイアウト崩れを防ぐための固定幅設定 */
 /* 親ボックスが小さくなっても、中身は縮まずに「見切れる」状態を作る。 */
 #yl-settings-modal>* {
   /* (300px - 左右padding 48px) 近似値で中身の幅を確保 */
@@ -86,7 +86,7 @@
 }
 
 /* 閉じかけの時に中身を少し早く消す（オプション） */
-/* これを入れると、枠が縮むのと同時に中身がフワッと消えてより自然になります */
+/* 枠収縮と同時に内容をフェードアウトさせて自然に見せる */
 #yl-settings-modal:not(.active)>* {
   opacity: 0;
   transition-duration: 0.2s;
@@ -166,7 +166,7 @@
 
 /* --- ホバー時の文字ぼやけ対策（Windows用） --- */
 
-/* 1. ボタン類を常にGPUレイヤーに固定し、アニメーション時の描画モード切り替えを防ぐ */
+/* ボタン類を常にGPUレイヤーに固定し、アニメーション時の描画モード切り替えを防ぐ */
 .yl-btn,
 #yl-toggle-btn,
 .yl-customize-btn {
@@ -176,7 +176,7 @@
   transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
 }
 
-/* 2. ホバー時のtransformにも translateZ(0) を追加してピクセルを安定させる */
+/* ホバー時のtransformにも translateZ(0) を指定してピクセルを安定させる */
 #yl-toggle-btn:hover {
   transform: scale(1.02) translateZ(0);
 }

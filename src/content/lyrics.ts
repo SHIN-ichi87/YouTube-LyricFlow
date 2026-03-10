@@ -58,6 +58,7 @@ function createLyricLineElement(index: number) {
 }
 
 // state.lyricsData を現在の DOM にそのまま描き直し、クリックシークも基準版どおり維持する。
+// 差分更新ではなく全再構築にすることで、部分的なDOMの不整合やイベントリスナの重複登録といったバグ原因を根絶するため。
 export function renderLyricsToDom() {
   const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
   if (!wrapper) return;
@@ -82,6 +83,7 @@ export function renderLyricsToDom() {
 }
 
 // エディタ保存後の再描画は、LRC 解析 -> 間奏挿入 -> DOM 反映の 3 段階で揃える。
+// プレビューと本番表示で処理経路を分けると動作に差分が出るため、常に同じパイプラインを通すことで確実な同期を担保する。
 export function loadLyricsFromText(text: string) {
   const data = parseLRC(text);
   state.lyricsData = insertInstrumentalBreaks(data);
@@ -112,6 +114,7 @@ export function saveLyricsToStorage(rawText: string) {
 }
 
 // 保存済みデータがあれば rawSubtitleData も復元し、なければ自動字幕取り込みへフォールバックする。
+// ユーザーが一生懸命に手動補正した歌詞を再訪問時に自動字幕で上書きして消してしまう、致命的なデータロストを防ぐため。
 export function loadLyricsFromStorage() {
   const videoId = new URLSearchParams(window.location.search).get('v');
   if (!videoId) return;
@@ -144,6 +147,7 @@ export function loadLyricsFromStorage() {
 }
 
 // 保存期限と容量上限をまとめて面倒見ることで、動画ごとのキャッシュを放置しない。
+// 何百曲も動画を見たユーザーのブラウザ拡張機能ストレージが溢れ、ある日突然何も保存できなくなる無言の障害を防ぐため。
 export function cleanUpStorage() {
   chrome.storage.local.get(null, (items) => {
     const now = Date.now();
@@ -191,6 +195,7 @@ export function saveSettings() {
 }
 
 // 既存設定は部分的に上書きし、欠けた項目は基準版デフォルトを残す。
+// バージョンアップで新しい設定キーが増えた際、ユーザーの保存データにそのキーが存在しなくてもエラーで落ちないようにするため。
 export function loadSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.local.get(['yl_user_settings'], (result) => {
@@ -204,6 +209,7 @@ export function loadSettings() {
 }
 
 // タイトルをそのままファイル名にしつつ、OS 依存の禁止文字だけ除去する。
+// ユーザー環境（特にWindows）において、無効な文字が含まれるファイル名でダウンロードが失敗して機能不全に陥るのを防ぐため。
 export function downloadLRC() {
   const text = byId<HTMLTextAreaElement>('yl-textarea')?.value;
   if (!text) return;

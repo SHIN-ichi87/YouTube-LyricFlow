@@ -27,7 +27,7 @@
     width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     overflow 0s;
-  /* ★追加: 閉じる時は即座にhiddenに戻す */
+  /* 閉じる時は即座にhiddenへ戻す */
   /* animation: yl-island-pulse 4s ease-in-out infinite; */
 
   pointer-events: auto;
@@ -36,7 +36,7 @@
   max-width: 400px;
 }
 
-/* ★新規追加: 開いた時だけ解放するルール */
+/* 開いた状態のオーバーフロー制御 */
 #yl-island.is-open {
   /* 開く途中はまだ hidden のままにして、内側の blur アニメをはみ出させない。 */
   overflow: visible;
@@ -46,10 +46,10 @@
     width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     overflow 0s 0.4s;
-  /* ★追加: 0.4秒のアニメーションが終わってから解放 */
+  /* アニメーション終了後にオーバーフローを解放 */
 }
 
-/* ★追加: 閉じ判定だけ広げる透明ゾーン */
+/* 誤クリック防止用の透明な判定拡張エリア */
 #yl-island-zone {
   position: relative;
   display: flex;
@@ -118,7 +118,7 @@
   padding-right: 4px;
 }
 
-/* ★追加: アニメーション時に中身がはみ出さないようにするインナー */
+/* アニメーション用インナーコンテナ */
 .yl-island-controls-inner {
   display: flex;
   align-items: center;
@@ -183,7 +183,7 @@
   text-shadow: 0 0 10px rgba(10, 132, 255, 0.5);
 }
 
-/* ★追加: 区切り線 (Separator) */
+/* 区切り線 (Separator) */
 .yl-island-separator {
   width: 1px;
   height: 14px;
@@ -197,7 +197,7 @@
     transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-/* ★追加: アイランドが開いた時に、本来の姿に戻す */
+/* アイランド展開時に通常表示にする */
 #yl-island.is-open .yl-island-separator {
   opacity: 1;
   transform: scaleY(1);
@@ -307,7 +307,7 @@
   transform: translateX(3px);
 }
 
-/* 軽い揺れのエフェクトを追加（クリック感） */
+/* クリック時の揺れエフェクト */
 .yl-island-main:active .yl-bars-icon {
   transform: scale(0.9);
 }
@@ -406,7 +406,7 @@
   margin: 6vh 0;
 }
 
-/* ★追加: Mask Layer */
+/* Mask Layer */
 #yl-mask-layer {
   position: absolute;
   top: 0;

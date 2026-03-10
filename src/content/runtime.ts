@@ -4,6 +4,7 @@ import { spawnParticlesFromElement } from './interactions';
 import { applyMaskLayer, clearMaskLayer, updateIslandStatus } from './visuals';
 
 // 再生位置と描画状態を毎フレーム突き合わせ、基準版のスクロール挙動を維持する。
+// setInterval等のタイマー駆動ではなくrequestAnimationFrameにすることで、画面のリフレッシュレートに同調した最も滑らかなアニメーションを実現するため。
 function tickLyricsSync() {
   // OFF 中でも次フレームの監視だけは続け、再有効化に即応する。
   if (!state.userSettings.isEnabled) {
@@ -50,6 +51,7 @@ function tickLyricsSync() {
 
   if (container.dataset.lastIndex !== String(currentIndex)) {
     // 「通常歌詞 -> 間奏スペーサー」へ入る瞬間だけ、直前行を dissolve させる。
+    // 間奏中も前の歌詞が画面に居座り続けると、動画のテンポ感と視覚が合わなくなるため、パーティクルで明示的に退場感を出す演出。
     if (currentIndex !== -1 && state.lyricsData[currentIndex]?.isInstrumental) {
       const previousLineEl = byId<HTMLDivElement>(`yl-line-${currentIndex - 1}`);
       if (previousLineEl) {
@@ -82,6 +84,7 @@ function tickLyricsSync() {
     const activeEl = byId<HTMLDivElement>(`yl-line-${currentIndex}`);
 
     // 最後の間奏マーカーに入ったら、基準版と同じ順序で歌詞をフェードアウトさせる。
+    // 歌が終わった後も文字の残骸や黒い背景板が画面のど真ん中に残ると、アウトロの映像視聴の邪魔になってしまうため。
     if (isLastLine && currentLineData.isInstrumental) {
       wrapper.style.opacity = '1';
       wrapper.style.pointerEvents = 'none';
@@ -140,12 +143,14 @@ function tickLyricsSync() {
 
 export function startSyncLyricsLoop() {
   // requestAnimationFrame ループは 1 本だけに固定し、多重起動を防ぐ。
+  // 動画遷移やオンオフのたびに新しいループが走ると、裏で何重にも処理が重複してPCのCPU使用率が跳ね上がるのを防ぐため。
   if (state.syncLoopStarted) return;
   state.syncLoopStarted = true;
   requestAnimationFrame(tickLyricsSync);
 }
 
 // YouTube の SPA 遷移では UI を残したまま、基準版と同じ粒度で状態を掃除する。
+// ページ全体のリロードが走らないYouTube特有の挙動に対し、別動画の歌詞が混ざったりUIが重複生成されたりするSPA由来のバグを回避するため。
 export function bootstrapContentScript() {
   document.addEventListener('yt-navigate-finish', () => {
     // 動画切り替え時は「動画依存の状態」だけを落とし、UI インスタンス自体は使い回す。
@@ -173,6 +178,7 @@ export function bootstrapContentScript() {
 
   window.setInterval(() => {
     // YouTube が DOM を差し替えて UI が外れた場合の軽量な自己修復ループ。
+    // テーマ変更やシアターモード切り替え時など、YouTube側がプレイヤー領域全体を破壊して再生成した際にも、自動で拡張機能のUIを復元するため。
     if (window.location.pathname === '/watch') {
       const player = document.querySelector('.html5-video-player');
       const container = byId<HTMLDivElement>('yl-container');

@@ -10,6 +10,7 @@ import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadL
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function runUiCleanup() {
+  // すでに実行済みのクリーンアップ関数を再度呼ばないよう、配列を空にしつつ取得する。
   const cleanupFns = state.uiCleanupFns.splice(0);
   cleanupFns.forEach((cleanup) => cleanup());
   state.outsideClickBindings = [];
@@ -22,6 +23,7 @@ function registerUiCleanup(cleanup: () => void) {
 }
 
 function registerOutsideClick(root: HTMLElement, onOutsideClick: () => void) {
+  // メニューやモーダルの外側をクリックした時に閉じる共通処理を登録する。
   const binding: OutsideClickBinding = { root, onOutsideClick };
   state.outsideClickBindings.push(binding);
 
@@ -32,6 +34,7 @@ function registerOutsideClick(root: HTMLElement, onOutsideClick: () => void) {
 
 function setupOutsideClickHandler() {
   const onDocumentClick = (event: MouseEvent) => {
+    // クリックされた対象がDOMツリー内に存在しない（削除された要素など）場合は無視する。
     const target = event.target;
     if (!(target instanceof Node)) return;
 
@@ -48,6 +51,7 @@ function setupOutsideClickHandler() {
 }
 
 function closeOpenDropdowns(except: HTMLElement | null = null) {
+  // 複数のドロップダウンが同時に開いたままになるのを防ぐため、指定の要素以外をすべて閉じる。
   document.querySelectorAll<HTMLDivElement>('.yl-select-options.open').forEach((element) => {
     if (element !== except) element.classList.remove('open');
   });
@@ -138,6 +142,7 @@ function createToggleButton() {
 }
 
 // Dynamic Island と Mode Selector は横並びのため、ラベル変更時に FLIP でズレを吸収する。
+// 文字数の異なるモード名に切り替えた際、隣接するUI要素がカクッと瞬時にワープして不格好に見えるのを防ぐため。
 function animateTopControlsLayout(firstRects: Map<Element, DOMRect> | null = null) {
   const container = byId<HTMLDivElement>('yl-top-controls');
   if (!container) return;
@@ -165,6 +170,7 @@ function animateTopControlsLayout(firstRects: Map<Element, DOMRect> | null = nul
 }
 
 // 設定モーダルは overflow の切り替えを遅らせ、開閉アニメーション中のはみ出しを防ぐ。
+// トランジション中に内部の要素が枠を飛び出したり、一瞬だけスクロールバーが見えてしまう視覚上のグリッチを避けるため。
 export function toggleSettingsModal() {
   const modal = byId<HTMLDivElement>('yl-settings-modal');
   if (!modal) return;
@@ -203,6 +209,7 @@ export function toggleSettingsModal() {
 }
 
 // エディタを閉じるときは、ドラッグ後の絶対配置や開きっぱなしの UI も一緒に戻す。
+// 次に開いた時にエディタが画面外に吹き飛んだままになったり、不要なサブメニューが出っ放しになる不具合を事前にリセットするため。
 export function toggleEditor() {
   const editor = byId<HTMLDivElement>('yl-editor');
   if (!editor) return;
@@ -239,6 +246,7 @@ export function toggleEditor() {
 }
 
 // ON/OFF は表示制御だけでなく、YouTube SPA 上での復帰ラベルもここで統一する。
+// DOMの表示と非表示をバラバラに行うと、動画切り替え時にボタンの文字と実際の状態がズレるなど、状態の不整合が起きやすいため。
 export function setAppPower(isOn: boolean) {
   state.userSettings.isEnabled = isOn;
   saveSettings();
@@ -267,6 +275,7 @@ export function setAppPower(isOn: boolean) {
 }
 
 // ネイティブ select の代わりに、基準版どおりのアニメ付きドロップダウンを組み立てる。
+// ネイティブの<select>要素はOS依存のデザインになりCSSでの柔軟なアニメーション制御が不可能なため。
 function createCustomDropdown(
   label: string | null,
   id: string,
@@ -379,6 +388,7 @@ function createCustomDropdown(
 }
 
 // 言語選択 UI は保存即反映にし、選択変更時は常に字幕の自動再取り込みを試みる。
+// ユーザーが言語設定を変えた瞬間に古い言語の歌詞が見え続けると混乱するため、即座に字幕のフェッチと再構築を走らせる。
 function renderLanguageControls() {
   const wrapper = byId<HTMLDivElement>('yl-lang-controls');
   if (!wrapper) return;
@@ -423,6 +433,7 @@ function createDynamicIsland() {
   if (!island) return host;
 
   // island 内の各ボタンは親へ伝播させると別 UI が開くため、すべて stopPropagation 前提。
+  // Dynamic Island自体に「ホバー／クリックで開く」判定があるため、子ボタンのクリックが親に伝わると予期せぬ挙動になる。
   island.querySelector<HTMLButtonElement>('#yl-power-off-btn')!.onclick = (event) => {
     event.stopPropagation();
     setAppPower(false);
@@ -448,6 +459,7 @@ function createDynamicIsland() {
     stampCurrentTime();
 
     // 成功時はトーストではなく、ボタン自身の色変化で即時フィードバックを返す。
+    // 同期ボタンは頻繁に押される可能性が高いため、その都度トーストが画面を塞ぐと体験を損なうと判断したため。
     const btn = event.currentTarget as HTMLButtonElement;
     btn.style.color = '#0A84FF';
     window.setTimeout(() => {
@@ -466,6 +478,7 @@ function createSettingsModal(root: HTMLElement) {
   render(<SettingsModalMarkup />, modal);
 
   // モーダルはヘッダー部分だけを持ち手にし、フォーム操作との競合を避ける。
+  // モーダル全体をドラッグ領域にすると、スライダーやテキスト入力欄を触ろうとした際にも誤ってドラッグが発動してしまうため。
   setupDraggable(modal, modal.querySelector<HTMLElement>('.yl-modal-header'));
 
   const fontWrapper = modal.querySelector<HTMLDivElement>('#yl-font-custom-wrapper');
@@ -492,6 +505,7 @@ function createSettingsModal(root: HTMLElement) {
   }
 
   // Reset 群は slider の見た目値と state の内部値を同時に戻す必要がある。
+  // 状態(state)だけ変更しても、非コントロールであるスライダー(input)の表示位置は自動同期されないため手動適応が必要。
   byId<HTMLButtonElement>('yl-reset-lines-btn')!.onclick = () => {
     state.userSettings.visibleLines = 3;
     const slider = byId<HTMLInputElement>('yl-lines-slider');
@@ -527,6 +541,7 @@ function createSettingsModal(root: HTMLElement) {
   byId<HTMLInputElement>('yl-lines-slider')!.oninput = (event) => {
     const value = parseInt((event.target as HTMLInputElement).value, 10);
     // UI 上の 10 は「100 行」ではなく Max を表す内部値 100 に変換する。
+    // 10という数値をそのまま行数制約に使うのではなく、事実上「無制限に表示」という特殊フラグとして予約しているため。
     state.userSettings.visibleLines = value === 10 ? 100 : value;
     updateLinesBadge();
     applyVisualSettings();
@@ -551,6 +566,7 @@ function createSettingsModal(root: HTMLElement) {
 
   byId<HTMLButtonElement>('yl-close-all-btn')!.onclick = () => {
     // Close All は editor / settings / dropdown / mode menu を一度に閉じる最終退避操作。
+    // 「画面がごちゃごちゃした時にリセットしたい」というユーザーの要望に応えるための緊急パニックボタンとしての役割。
     if (state.isSettingsOpen) toggleSettingsModal();
     if (state.isEditorOpen) toggleEditor();
 
@@ -588,6 +604,7 @@ export function spawnFloatingNotes(sourceEl: HTMLElement) {
 }
 
 // プレイヤー直下に必要な DOM を一度だけ差し込み、YouTube の DOM 再構築にも耐える形にする。
+// YouTubeは動画遷移時に動画プレイヤー周辺のDOMを激しく書き換えるため、拡張機能のUIが消滅してしまうのを防ぐ防波堤。
 export function initUI() {
   const player =
     document.querySelector<HTMLElement>('.html5-video-player') ||
@@ -620,6 +637,7 @@ export function initUI() {
   registerUiCleanup(setupOutsideClickHandler());
 
   // toast は他 UI より前面の固定レイヤーとして先に差し込む。
+  // DOMの挿入順序を工夫することで、巨大なz-indexを使わずとも自然に要素が上になるようにし、予期せぬ表示重なりを防ぐ。
   const toast = document.createElement('div');
   toast.id = 'yl-offset-toast';
   uiRoot.appendChild(toast);
@@ -732,6 +750,7 @@ export function initUI() {
     if (!saveBtn) return;
 
     // Apply は textarea の文字列を唯一の正とし、保存と再描画を同じ文字列で実行する。
+    // 保存と画面の反映で経路を分けると、保存失敗時などに「画面とデータが違う」という不整合が起きるリスクがあるため。
     saveLyricsToStorage(text);
     loadLyricsFromText(text);
 
@@ -739,6 +758,7 @@ export function initUI() {
     if (saveBtn.classList.contains('is-success')) return;
 
     // 途中で文言が消えても幅が縮まないよう、現在幅を固定してから成功状態へ入る。
+    // UIのSuccessアイコンへの遷移時にフレックスボックスの計算でボタンの大きさがガクガクと変わる不快なレイアウトシフトを防ぐため。
     const originalWidth = saveBtn.offsetWidth;
     saveBtn.style.width = `${originalWidth}px`;
     saveBtn.classList.add('is-success');
@@ -787,6 +807,7 @@ export function initUI() {
 
   void loadSettings().then(() => {
     // 永続設定の復元は最後にまとめて行い、初期 DOM 構築中のちらつきを避ける。
+    // UI構築途中で各種パラメータを反映し出すと、デフォルト状態から保存状態へと画面がバチバチ切り替わるFOUC現象が起きてしまうため。
     setAppPower(state.userSettings.isEnabled);
     applyVisualSettings();
     updateSettingsModalUI();
@@ -795,6 +816,7 @@ export function initUI() {
 }
 
 // 動画ごとのカテゴリ判定と UI 復帰をまとめ、SPA 遷移でも同じ初期化順を保つ。
+// YouTubeの画面遷移は通常のリロードと違いイベントフックのタイミングが曖昧なため、自己完結型の起動プロセスが必要。
 export async function bootNavigation() {
   const player = document.querySelector('.html5-video-player');
   if (!player) return;
@@ -813,6 +835,7 @@ export async function bootNavigation() {
 
     const isMusic = await checkIsMusicVideo(videoId);
     // 判定待ち中に別動画へ遷移していたら、この結果は捨てる。
+    // APIの応答が遅れた際、すでに別の動画を見ているのに前の動画の判定結果で音楽UIが急に開くといった競合バグを防ぐため。
     if (state.currentVIdForCategory !== videoId) return;
 
     if (isMusic) {

@@ -3,6 +3,7 @@ import { formatTimeLRC } from './parsers';
 import { applyVisualSettings, clearMaskLayer } from './visuals';
 
 // 画面上の一時通知は 1 つだけ表示し、後続メッセージでタイマーを上書きする。
+// 通知が連続でスタックして画面を見えなくしてしまうのを防ぎ、常に最新の状態だけを伝えるため。
 export function showToast(message: string) {
   const toast = byId<HTMLDivElement>('yl-offset-toast');
   if (!toast) return;
@@ -17,6 +18,7 @@ export function showToast(message: string) {
 }
 
 // エディタやモーダルは見た目の座標を固定してからドラッグし、基準版の追従感を揃える。
+// CSSのtransformで中央寄せされている要素をそのままドラッグすると、マウス位置と実体座標がズレて画面外へ吹き飛ぶ不具合を避けるため。
 export function setupDraggable(targetEl: HTMLElement | null, handleEl: HTMLElement | null) {
   if (!targetEl || !handleEl) return;
 
@@ -74,6 +76,7 @@ export function spawnParticlesFromElement(element: HTMLElement | null) {
   if (!element) return;
 
   // パーティクルは wrapper 相対で配置しないと、スクロール中に origin がずれる。
+  // 画面固定の座標系で作ってしまうと、歌詞がスクロールした時にエフェクトだけが空中に置き去りにされて不自然に見えるため。
   const rect = element.getBoundingClientRect();
   const container = byId<HTMLDivElement>('yl-scroll-wrapper');
   if (!container) return;
@@ -118,6 +121,7 @@ export function adjustOffset(amount: number) {
 }
 
 // ArrowDown は「最初の未タイムスタンプ行に現在時刻を打つ」基準版の簡易同期フローを再現する。
+// ユーザーがいちいち行頭へカーソルを合わせる手間を省き、動画を見ながら連続してキーを叩くだけでLRCが作れるようにするため。
 export function stampCurrentTime() {
   const video = document.querySelector<HTMLVideoElement>('video');
   const textarea = byId<HTMLTextAreaElement>('yl-textarea');
@@ -141,6 +145,7 @@ export function stampCurrentTime() {
 }
 
 // 手動スクロール中は自動吸着を止め、ホイール量をそのまま transform に反映する。
+// ユーザーが意図して他の歌詞を読もうとしている時に、動画の現在位置へ強引にスクロールバックされるストレスをなくすため。
 export function startInteraction() {
   const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
   if (state.isUserInteracting || !wrapper) return;
@@ -170,6 +175,7 @@ export function resetInteractionTimer() {
 }
 
 // ホイールとドラッグを同居させるため、操作開始と終了の状態遷移を明示する。
+// 単純なスクロールと位置調整のドラッグが同じDOM上で競合し、意図せず画面が動いてしまう操作ミスを防ぐため。
 export function setupInteractionEvents() {
   const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
   const plate = byId<HTMLDivElement>('yl-bg-plate');
@@ -286,6 +292,7 @@ export function setupDragAndDrop(target: HTMLElement) {
   if (!dropZone) return () => {};
 
   // drag 系イベントはすべて止めて、YouTube 側の既定挙動より LRC 読み込みを優先する。
+  // ブラウザ標準のファイルプレビュー遷移が発動してしまい、せっかく開いていた動画ページから離脱してしまう事故を防ぐため。
   const onDragOver = (event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -341,6 +348,7 @@ export function setupDragAndDrop(target: HTMLElement) {
 }
 
 // エディタ内ショートカットとグローバルショートカットは、YouTube 本体へ伝播させない。
+// エディタで文字入力やカーソル移動をしている最中に、意図せず動画がシークしたりミュートされたりする干渉を防ぐため。
 export function setupKeyboardEvents() {
   const textarea = byId<HTMLTextAreaElement>('yl-textarea');
   const editor = byId<HTMLDivElement>('yl-editor');

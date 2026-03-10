@@ -1,5 +1,5 @@
 /* このファイルは設定モーダル周辺の補助 UI とアプリ OFF 時の制御をまとめる。 */
-/* ★追加: Icon Button (Editor内の設定ボタン用) */
+/* Icon Button (Editor内の設定ボタン用) */
 .yl-icon-btn {
   background: transparent;
   border: none;
@@ -18,7 +18,7 @@
   color: #fff;
 }
 
-/* ★追加: Settings Modal */
+/* Settings Modal */
 
 
 .yl-modal-header {
@@ -155,7 +155,7 @@
 @container (max-width: 1200px) {
   #yl-editor {
     zoom: 0.93;
-    /* これだけで全要素が70%のサイズになります */
+    /* 全要素のサイズを縮小 */
   }
 
   #yl-settings-modal {
@@ -240,13 +240,13 @@
   background: rgba(10, 132, 255, 0.2);
   /* 起動待機っぽい青 */
   box-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
-  /* ポワンと光らせる */
+  /* 発光効果 */
   border-color: rgba(10, 132, 255, 0.5);
   opacity: 1 !important;
   /* 強制表示 */
 }
 
-/* オフ時はテキストを変えるなら擬似要素などで対応可能ですが、今回はシンプルに */
+/* シンプルなオフ状態のデザイン */
 
 /* --- 赤い電源ボタン (Dynamic Island内) --- */
 #yl-power-off-btn {
@@ -297,7 +297,7 @@
   position: relative;
   overflow: hidden; /* 光のエフェクトを内側に留める */
   
-  /* 派手なアニメーションを廃止し、上質で分かりやすい青のグラデーションに */
+  /* 青のグラデーション */
   background: #0A84FF;
   background-image: linear-gradient(135deg, #0A84FF 0%, #0070DF 100%);
   
@@ -315,25 +315,25 @@
   transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1); /* 少し時間を長めに */
   z-index: 1;
   
-  /* 影も控えめにし、上品な立体感だけを残す */
+  /* 控えめなドロップシャドウで立体感を演出 */
   box-shadow:
     0 4px 12px rgba(10, 132, 255, 0.2),
     inset 0 1px 1px rgba(255, 255, 255, 0.25);
 }
 
-/* 成功時の緑色を「上に重なるレイヤー」として作成 */
+/* 成功時の背景レイヤー */
 #yl-save-btn::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
   opacity: 0; /* 普段は透明 */
-  transition: opacity 0.3s ease; /* ここで滑らかさを制御 */
+  transition: opacity 0.3s ease; /* トランジション制御 */
   z-index: 1;
 }
 
 #yl-save-btn.is-success::before {
-  opacity: 1; /* 成功時だけ浮き上がる */
+  opacity: 1; /* 成功時に表示 */
 }
 
 /* --- Hover: 浮かび上がらず、滑らかにスケールアップ --- */
@@ -409,7 +409,7 @@
 }
 
 #yl-save-btn.is-success span {
-  /* 文言は上へ逃がして透明化し、同じ面積のままチェックへ置き換える。 */
+  /* テキストを非表示にし、チェックアイコンへ切り替える */
   transform: translateY(-35px);
   opacity: 0;
 }
@@ -422,7 +422,7 @@
 /* ========================================================= */
 /* Spinning Light Border Effect (Apply & Saveボタン用) */
 /* ========================================================= */
-/* こちらは元の美しいロジックをそのまま活かします */
+
 
 .yl-btn-outline {
   position: absolute;

@@ -72,7 +72,7 @@
   visibility: visible;
 }
 
-/* --- 3. 背景プレートのスタイル (新規追加) --- */
+/* --- 背景プレートのスタイル --- */
 #yl-bg-plate {
   position: absolute;
   /* JSで制御: top/left は wrapper と同じ位置 */
@@ -97,7 +97,7 @@
   border-radius: 50%;
   /* 楕円形にする */
 
-  /* ★重要: サイズ変更を滑らかにするアニメーション */
+  /* サイズと位置のトランジション */
   transition:
     width 0.3s ease-out,
     height 0.3s ease-out,
@@ -121,17 +121,17 @@
   top: 50%;
   /* デフォルト位置 */
   left: 50%;
-  /* ★修正: 幅を90%などの固定ではなく、中身（歌詞）に合わせる */
+  /* 幅を固定せず、内部コンテンツ（歌詞）に合わせる */
   width: fit-content;
   /* 文字が少なすぎる場合でもつかみやすいように最低幅を確保 */
   /* min-width: 8cqw; */
 
-  /* ★追加: 左右に少し余白（判定エリア）を持たせる */
+  /* 左右の余白（判定エリア拡張用） */
   /* padding: 0 4cqw; */
   box-sizing: border-box;
   /* paddingを含めた幅計算にする */
 
-  /* ★変更: transformの基準を変更 (translateX(-50%)で自身の幅の半分戻して中央寄せにする) */
+  /* 中央寄せのためのオフセット */
   transform: translate(-50%, 0);
 
   /* 歌詞行は 1 行ごとの横幅差が大きいため、折り返さず中央寄せで積む。 */
@@ -148,7 +148,7 @@
   cursor: grab;
   /* タッチ操作でのスクロール干渉を防ぐ */
   touch-action: none;
-  /* ★重要: これを追加することで、文字のない「隙間」や「行間」でもマウスイベントを拾えるようになります */
+  /* 文字のない「隙間」や「行間」でもマウスイベントを拾えるようにする */
   pointer-events: auto;
 
   font-family: var(--yl-font-current);
