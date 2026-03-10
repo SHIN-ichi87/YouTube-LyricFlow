@@ -3,4 +3,7 @@
 
 現在開発中のYoutubeのサイトで、ミュージックビデオにより没入できるような歌詞表示拡張機能です。
 
+↓GIF動画
+
 ![demo](assets/extensionGIF1.gif)
+![demo](assets/Interactible.gif)

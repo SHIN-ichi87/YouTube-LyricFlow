@@ -83,7 +83,7 @@ export const state = {
   userSettings: {
     isEnabled: false,
     fontSize: 28,
-    verticalPos: 60,
+    verticalPos: 50,
     horizontalPos: 50,
     visibleLines: 3,
     lineHeight: 140,

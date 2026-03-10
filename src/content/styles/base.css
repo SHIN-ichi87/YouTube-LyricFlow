@@ -118,7 +118,7 @@
 /* --- Scroll Wrapper --- */
 #yl-scroll-wrapper {
   position: absolute;
-  top: 60%;
+  top: 50%;
   /* デフォルト位置 */
   left: 50%;
   /* ★修正: 幅を90%などの固定ではなく、中身（歌詞）に合わせる */
@@ -302,4 +302,11 @@ rt {
   /* FLIP アニメーションで translate される前提なので、個別要素に will-change を載せる。 */
   pointer-events: auto;
   will-change: transform;
+}
+
+/* YouTubeのUIが消えるときに拡張機能のUIも一緒に消す */
+.ytp-autohide #yl-toggle-btn,
+.ytp-autohide #yl-top-controls {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }

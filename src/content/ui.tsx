@@ -193,6 +193,10 @@ export function toggleSettingsModal() {
       if (!modal.classList.contains('active')) {
         modal.style.top = '';
         modal.style.left = '';
+        modal.style.right = '';
+        modal.style.bottom = '';
+        modal.style.transform = '';
+        modal.style.margin = '';
       }
     }, 400);
   }
