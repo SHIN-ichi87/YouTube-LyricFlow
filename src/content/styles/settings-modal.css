@@ -173,7 +173,7 @@
   backface-visibility: hidden;
   transform: translateZ(0);
   /* transition: all は再描画の負荷が高くぼやけの原因になるため、個別指定で上書き */
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+  transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1), transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
 }
 
 /* ホバー時のtransformにも translateZ(0) を指定してピクセルを安定させる */

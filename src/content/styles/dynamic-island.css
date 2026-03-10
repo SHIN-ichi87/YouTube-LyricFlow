@@ -26,6 +26,7 @@
     box-shadow 0.3s ease,
     width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    opacity 0.25s cubic-bezier(0, 0, 0.2, 1),
     overflow 0s;
   /* 閉じる時は即座にhiddenへ戻す */
   /* animation: yl-island-pulse 4s ease-in-out infinite; */
@@ -45,6 +46,7 @@
     box-shadow 0.3s ease,
     width 0.4s cubic-bezier(0.19, 1, 0.22, 1),
     padding 0.4s cubic-bezier(0.19, 1, 0.22, 1),
+    opacity 0.25s cubic-bezier(0, 0, 0.2, 1),
     overflow 0s 0.4s;
   /* アニメーション終了後にオーバーフローを解放 */
 }

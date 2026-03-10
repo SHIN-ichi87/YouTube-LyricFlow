@@ -25,7 +25,8 @@
     padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.24s ease,
     box-shadow 0.24s ease,
-    border-color 0.24s ease;
+    border-color 0.24s ease,
+    opacity 0.25s cubic-bezier(0, 0, 0.2, 1);
 }
 
 #yl-mode-selector:hover {

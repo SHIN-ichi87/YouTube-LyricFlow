@@ -274,7 +274,7 @@ rt {
   font-weight: 600;
   font-size: 13px;
   pointer-events: auto;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
@@ -305,8 +305,13 @@ rt {
 }
 
 /* YouTubeのUIが消えるときに拡張機能のUIも一緒に消す */
-.ytp-autohide #yl-toggle-btn,
-.ytp-autohide #yl-top-controls {
+.ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-toggle-btn,
+.ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-island,
+.ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-mode-selector {
   opacity: 0 !important;
+}
+
+.ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-toggle-btn,
+.ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-top-controls {
   pointer-events: none !important;
 }

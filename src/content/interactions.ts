@@ -31,11 +31,18 @@ export function setupDraggable(targetEl: HTMLElement | null, handleEl: HTMLEleme
     // transform 中の要素をそのままドラッグすると飛ぶので、見た目位置を絶対座標へ固定する。
     event.preventDefault();
 
+    const zoomStr = window.getComputedStyle(targetEl).zoom;
+    const zoom = (zoomStr && zoomStr !== 'normal') ? parseFloat(zoomStr) : 1;
+
     const parent = (targetEl.offsetParent as HTMLElement | null) || document.body;
     const parentRect = parent.getBoundingClientRect();
     const rect = targetEl.getBoundingClientRect();
-    const relativeTop = rect.top - parentRect.top;
-    const relativeLeft = rect.left - parentRect.left;
+    // ズーム適用下では getBoundingClientRect() の結果をズーム倍率で割らないと CSS 上の絶対位置や移動量がズレる
+    const relativeTop = (rect.top - parentRect.top) / zoom;
+    const relativeLeft = (rect.left - parentRect.left) / zoom;
+
+    // style.top/left 等を変更する前に .yl-dragging を付与し、transition による位置飛び（アニメーション誤爆）を防ぐ
+    targetEl.classList.add('yl-dragging');
 
     targetEl.style.top = `${relativeTop}px`;
     targetEl.style.left = `${relativeLeft}px`;
@@ -44,7 +51,6 @@ export function setupDraggable(targetEl: HTMLElement | null, handleEl: HTMLEleme
     targetEl.style.transform = 'none';
     targetEl.style.margin = '0';
 
-    targetEl.classList.add('yl-dragging');
     document.body.style.userSelect = 'none';
 
     const startX = event.clientX;
@@ -54,8 +60,8 @@ export function setupDraggable(targetEl: HTMLElement | null, handleEl: HTMLEleme
 
     // 以後は relativeTop / relativeLeft を基準に、移動量だけを足していく。
     const onMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
+      const deltaX = (moveEvent.clientX - startX) / zoom;
+      const deltaY = (moveEvent.clientY - startY) / zoom;
       targetEl.style.left = `${initialLeft + deltaX}px`;
       targetEl.style.top = `${initialTop + deltaY}px`;
     };
