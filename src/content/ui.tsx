@@ -733,6 +733,38 @@ export function initUI() {
   render(<EditorMarkup fontSize={state.userSettings.fontSize} lineHeight={state.userSettings.lineHeight} />, editor);
   uiRoot.appendChild(editor);
 
+  const shortcutBtn = editor.querySelector<HTMLButtonElement>('#yl-shortcut-toggle-btn');
+  const textarea = editor.querySelector<HTMLTextAreaElement>('#yl-textarea');
+  if (shortcutBtn && textarea) {
+    shortcutBtn.classList.toggle('active', state.isShortcutModeOn);
+    
+    // ボタンのクリック時にテキストエリアからフォーカスが外れないよう、mousedown で blur を防ぐ
+    shortcutBtn.onmousedown = (event) => event.preventDefault();
+    
+    shortcutBtn.onclick = () => {
+      state.isShortcutModeOn = !state.isShortcutModeOn;
+      shortcutBtn.classList.toggle('active', state.isShortcutModeOn);
+      showToast(state.isShortcutModeOn ? 'Shortcuts: ON' : 'Shortcuts: OFF');
+
+      // オンにした場合は確実にテキスト入力へフォーカスを戻す
+      if (state.isShortcutModeOn) {
+        textarea.focus();
+      }
+    };
+
+    // テキストエリアからフォーカスが外れたら自動でショートカットモードをOFFにする
+    // （他の場所をクリックしたときにショートカットが効かないことを明示的に伝えるため）
+    const onBlur = () => {
+      if (state.isShortcutModeOn) {
+        state.isShortcutModeOn = false;
+        shortcutBtn.classList.remove('active');
+        showToast('Shortcuts: Auto OFF');
+      }
+    };
+    textarea.addEventListener('blur', onBlur);
+    registerUiCleanup(() => textarea.removeEventListener('blur', onBlur));
+  }
+
   // editor の最初の行全体をドラッグハンドルとして使う。
   byId<HTMLButtonElement>('yl-open-settings-btn')!.onclick = toggleSettingsModal;
   const editorHeader = editor.firstElementChild as HTMLElement | null;

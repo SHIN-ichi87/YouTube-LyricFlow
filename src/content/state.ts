@@ -76,6 +76,8 @@ export const state = {
   dragStartY: 0,
   dragStartPos: 0,
   hasMoved: false,
+  // エディタ内でキーボードショートカットを有効にするモード
+  isShortcutModeOn: false,
   // YouTube 字幕 URL の観測結果と、そこから復元するトラック情報。
   latestTimedTextUrl: null as string | null,
   timedTextObserver: null as PerformanceObserver | null,

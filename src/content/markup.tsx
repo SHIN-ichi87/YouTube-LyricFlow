@@ -109,7 +109,19 @@ export function EditorMarkup({ fontSize, lineHeight }: { fontSize: number | stri
         </div>
       </div>
 
-      <div class="yl-textarea-wrap">
+      <div class="yl-textarea-wrap" style={{ position: 'relative' }}>
+        <button id="yl-shortcut-toggle-btn" class="yl-shortcut-toggle" title="Enable Keyboard Shortcuts (k: stamp, i: remove, space: play/pause)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
+            <line x1="7" y1="8" x2="7" y2="8"></line>
+            <line x1="11" y1="8" x2="11" y2="8"></line>
+            <line x1="15" y1="8" x2="15" y2="8"></line>
+            <line x1="7" y1="12" x2="7" y2="12"></line>
+            <line x1="11" y1="12" x2="11" y2="12"></line>
+            <line x1="15" y1="12" x2="15" y2="12"></line>
+            <line x1="7" y1="16" x2="17" y2="16"></line>
+          </svg>
+        </button>
         <textarea id="yl-textarea" placeholder="[00:00.00] Lyrics will appear here..."></textarea>
       </div>
 

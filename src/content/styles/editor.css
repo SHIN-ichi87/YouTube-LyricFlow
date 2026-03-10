@@ -132,6 +132,58 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* --- Shortcut Mode Toggle --- */
+.yl-shortcut-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 0;
+
+  /* デフォルトは非表示。右へ少し押し込んでおく */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px);
+}
+
+.yl-textarea-wrap:hover .yl-shortcut-toggle,
+.yl-shortcut-toggle.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.yl-shortcut-toggle svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.yl-shortcut-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.yl-shortcut-toggle.active {
+  background: rgba(10, 132, 255, 0.25);
+  border-color: rgba(10, 132, 255, 0.6);
+  color: #0A84FF;
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.3);
+}
+
 /* Buttons */
 .yl-btn {
   width: 100%;

@@ -150,6 +150,45 @@ export function stampCurrentTime() {
   }
 }
 
+// Alt+Up または i キーで、直前に打ったタイムスタンプを削除する。
+// 打刻ミスをした際に、エディタを開かずにすぐ取り消せるようにするため。
+export function removeLastTimestamp() {
+  const textarea = byId<HTMLTextAreaElement>('yl-textarea');
+  if (!textarea) return;
+
+  const lines = textarea.value.split('\n');
+  const firstUnstampedIndex = lines.findIndex((line) => !line.match(/\[\d{2}:\d{2}\.\d{2,3}\]/) && line.trim() !== '');
+
+  let targetIndex = -1;
+  if (firstUnstampedIndex === -1) {
+    // 全ての行がスタンプ済みの場合は、一番最後のスタンプ行を対象にする
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      if (lines[i].match(/\[\d{2}:\d{2}\.\d{2,3}\]/)) {
+        targetIndex = i;
+        break;
+      }
+    }
+  } else {
+    // 未スタンプ行がある場合は、その直前にあるスタンプ行を対象にする
+    for (let i = firstUnstampedIndex - 1; i >= 0; i -= 1) {
+      if (lines[i].match(/\[\d{2}:\d{2}\.\d{2,3}\]/)) {
+        targetIndex = i;
+        break;
+      }
+    }
+  }
+
+  if (targetIndex !== -1) {
+    lines[targetIndex] = lines[targetIndex].replace(/\[\d{2}:\d{2}\.\d{2,3}\]\s*/, '');
+    textarea.value = lines.join('\n');
+
+    void import('./lyrics').then(({ saveLyricsToStorage, loadLyricsFromText }) => {
+      saveLyricsToStorage(textarea.value);
+      loadLyricsFromText(textarea.value);
+    });
+  }
+}
+
 // 手動スクロール中は自動吸着を止め、ホイール量をそのまま transform に反映する。
 // ユーザーが意図して他の歌詞を読もうとしている時に、動画の現在位置へ強引にスクロールバックされるストレスをなくすため。
 export function startInteraction() {
@@ -365,38 +404,77 @@ export function setupKeyboardEvents() {
       event.stopPropagation();
     };
 
-    // エディタ上のホイールだけは動画プレイヤーへ伝播させず、モーダル内スクロールを守る。
     editor.addEventListener('wheel', onEditorWheel, { passive: false });
     cleanupFns.push(() => editor.removeEventListener('wheel', onEditorWheel));
-  }
 
-  if (textarea) {
-    const onTextareaKeyDown = (event: KeyboardEvent) => {
-      // ArrowDown は字幕合わせ用の打刻ショートカットとして予約する。
-      if (event.key === 'ArrowDown') {
+    const onEditorKeyDown = (event: KeyboardEvent) => {
+      // エディタ本体やその中にある要素（ボタンやスライダー等）でのキー操作は、すべてここで伝播を止める。
+      // これにより、YouTube のショートカット（fで全画面など）が誤爆するのを完全に遮断する。
+      event.stopPropagation();
+
+      const key = event.key.toLowerCase();
+      const code = event.code;
+      
+      const isDownEvent = key === 'arrowdown' || (event.altKey && (code === 'KeyK' || key === 'k' || key === '˚')) || (state.isShortcutModeOn && (code === 'KeyK' || key === 'k'));
+      const isUpEvent = (event.altKey && (key === 'arrowup' || code === 'KeyI' || key === 'i' || key === 'ˆ')) || (state.isShortcutModeOn && (code === 'KeyI' || key === 'i'));
+      const isPlayPause = (key === ' ' && event.ctrlKey) || (state.isShortcutModeOn && key === ' ');
+
+      if (isDownEvent) {
         event.preventDefault();
         stampCurrentTime();
-      }
-
-      // Ctrl+Space は YouTube 標準の Space と競合しやすいため、明示的に Ctrl を要求する。
-      if (event.key === ' ' && event.ctrlKey) {
+      } else if (isUpEvent) {
+        event.preventDefault();
+        removeLastTimestamp();
+      } else if (isPlayPause) {
+        // Space が押されたとき、ボタンへのフォーカスだとクリック判定に化けるため、それも防ぐ
         event.preventDefault();
         toggleVideoPlay();
       }
-
-      event.stopPropagation();
     };
 
-    textarea.addEventListener('keydown', onTextareaKeyDown);
-    cleanupFns.push(() => textarea.removeEventListener('keydown', onTextareaKeyDown));
+    // keyup / keypress についても全く同じ壁を設置して YouTube 側への漏れを完全に防ぐ
+    const stopEvent = (event: Event) => event.stopPropagation();
+
+    editor.addEventListener('keydown', onEditorKeyDown);
+    editor.addEventListener('keyup', stopEvent);
+    editor.addEventListener('keypress', stopEvent);
+    cleanupFns.push(() => {
+      editor.removeEventListener('keydown', onEditorKeyDown);
+      editor.removeEventListener('keyup', stopEvent);
+      editor.removeEventListener('keypress', stopEvent);
+    });
   }
 
   const onDocumentKeyDown = (event: KeyboardEvent) => {
-    // グローバル側では、エディタが閉じている時だけ Alt+Arrow をオフセット微調整に使う。
-    if (!state.isEditorOpen && state.lyricsData.length > 0 && (event.key === 'ArrowRight' || event.key === 'ArrowLeft') && event.altKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      adjustOffset(event.key === 'ArrowRight' ? 0.1 : -0.1);
+    // グローバル側では、エディタが閉じている時でも各種 Alt ショートカットを使えるようにする。
+    // Mac の Option + 文字キーは特殊記号が入力されて event.key が判定しづらいため event.code など多重に判定する。
+    if (!state.isEditorOpen && event.altKey) {
+      const key = event.key.toLowerCase();
+      const code = event.code;
+
+      const isRight = key === 'arrowright' || code === 'KeyL' || key === 'l' || key === '¬';
+      const isLeft = key === 'arrowleft' || code === 'KeyJ' || key === 'j' || key === '∆';
+      const isDown = key === 'arrowdown' || code === 'KeyK' || key === 'k' || key === '˚';
+      const isUp = key === 'arrowup' || code === 'KeyI' || key === 'i' || key === 'ˆ';
+
+      // 歌詞がなくても操作感（トースト等）をテストできるように、長さチェック(lyricsData.length > 0)はいったん外す
+      if (isRight) {
+        event.preventDefault();
+        event.stopPropagation();
+        adjustOffset(0.1);
+      } else if (isLeft) {
+        event.preventDefault();
+        event.stopPropagation();
+        adjustOffset(-0.1);
+      } else if (isDown) {
+        event.preventDefault();
+        event.stopPropagation();
+        stampCurrentTime();
+      } else if (isUp) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeLastTimestamp();
+      }
     }
   };
 
