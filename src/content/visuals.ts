@@ -122,6 +122,7 @@ export function applyVisualSettings() {
       plate.classList.add('visible');
       plate.style.top = `${state.userSettings.verticalPos}%`;
       plate.style.left = `${state.userSettings.horizontalPos}%`;
+      plate.style.opacity = '1';
 
       if (!plate.style.width) {
         plate.style.width = '200px';
@@ -130,6 +131,7 @@ export function applyVisualSettings() {
     } else {
       // 非表示時はサイズを温存し、再表示時の初回計算前でも見た目が破綻しないようにする。
       plate.classList.remove('visible');
+      plate.style.opacity = '0';
     }
   }
 

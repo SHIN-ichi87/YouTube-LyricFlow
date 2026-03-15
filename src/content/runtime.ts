@@ -3,6 +3,23 @@ import { bootNavigation } from './ui';
 import { spawnParticlesFromElement } from './interactions';
 import { applyMaskLayer, clearMaskLayer, updateIslandStatus } from './visuals';
 
+// 間奏やアウトロへ入った瞬間は、手動操作由来のフラグをまとめて掃除する。
+// ドラッグ中の cursor や interactionTimer が残ったまま退場演出へ切り替わると、見た目とヒット判定が食い違うため。
+function cancelLyricInteraction(wrapper: HTMLDivElement, plate: HTMLDivElement | null) {
+  if (state.interactionTimer) {
+    window.clearTimeout(state.interactionTimer);
+    state.interactionTimer = null;
+  }
+
+  state.isUserInteracting = false;
+  state.isDraggingPos = false;
+  state.hasMoved = false;
+  state.manualScrollOffset = 0;
+  wrapper.classList.remove('is-interacting');
+  wrapper.style.cursor = 'grab';
+  if (plate) plate.style.transition = '';
+}
+
 // 再生位置と描画状態を毎フレーム突き合わせ、基準版のスクロール挙動を維持する。
 // setInterval等のタイマー駆動ではなくrequestAnimationFrameにすることで、画面のリフレッシュレートに同調した最も滑らかなアニメーションを実現するため。
 function tickLyricsSync() {
@@ -72,6 +89,14 @@ function tickLyricsSync() {
     });
   }
 
+  const currentLineData = currentIndex !== -1 ? state.lyricsData[currentIndex] : null;
+  const isInstrumentalSection = Boolean(currentLineData?.isInstrumental);
+
+  // 間奏やイントロ/アウトロでは通常のドラッグ操作より退場演出を優先し、見た目とヒット判定のズレをなくす。
+  if ((isInstrumentalSection || currentIndex === -1) && state.isUserInteracting) {
+    cancelLyricInteraction(wrapper, plate);
+  }
+
   // ユーザー操作中は、現在位置の追従だけ止めてハイライト更新は継続する。
   if (state.isUserInteracting) {
     requestAnimationFrame(tickLyricsSync);
@@ -79,13 +104,11 @@ function tickLyricsSync() {
   }
 
   if (currentIndex !== -1) {
-    const currentLineData = state.lyricsData[currentIndex];
-    const isLastLine = currentIndex === state.lyricsData.length - 1;
     const activeEl = byId<HTMLDivElement>(`yl-line-${currentIndex}`);
 
-    // 最後の間奏マーカーに入ったら、基準版と同じ順序で歌詞をフェードアウトさせる。
-    // 歌が終わった後も文字の残骸や黒い背景板が画面のど真ん中に残ると、アウトロの映像視聴の邪魔になってしまうため。
-    if (isLastLine && currentLineData.isInstrumental) {
+    // 間奏/アウトロのスペーサーに入ったら、歌詞本体は退場させて映像を優先する。
+    // 中盤の間奏でも歌詞が居残ると視界を塞いでしまうため、終了演出と同じく非表示状態に寄せる。
+    if (currentLineData?.isInstrumental) {
       wrapper.style.opacity = '1';
       wrapper.style.pointerEvents = 'none';
       wrapper.classList.add('finished');
@@ -112,7 +135,22 @@ function tickLyricsSync() {
       wrapper.style.pointerEvents = 'auto';
       wrapper.classList.remove('finished');
 
-      if (plate) plate.style.opacity = '1';
+      if (plate) {
+        if (!state.userSettings.showPlate) {
+          plate.style.opacity = '0';
+        } else {
+          // 次の行が間奏（またはアウトロ）かどうかを判定
+          const nextIsInst = currentIndex < state.lyricsData.length - 1 && state.lyricsData[currentIndex + 1].isInstrumental;
+          
+          // プレートだけを何秒早く消し始めるか
+          const earlyFadeSec = 0.5;
+          const isApproachingEnd = currentLineData?.endTime && (adjustedTime >= currentLineData.endTime - earlyFadeSec);
+
+          // 次が間奏で、かつフライング時刻を過ぎていたらプレートだけ先に消す
+          plate.style.opacity = (nextIsInst && isApproachingEnd) ? '0' : '1';
+        }
+      }
+
       if (mask) mask.style.opacity = '1';
       // 終端演出で外したマスクは、通常表示に戻る瞬間にだけ復元する。
       if (mask && mask.style.maskImage === 'none') {
