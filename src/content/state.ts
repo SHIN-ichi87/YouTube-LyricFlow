@@ -76,6 +76,12 @@ export const state = {
   dragStartY: 0,
   dragStartPos: 0,
   hasMoved: false,
+  // 再生バー付近の安全領域は「最新ポインタ位置」と「前回計算結果」を使って、必要時だけヒット判定を切り替える。
+  // 毎フレーム DOM 計測や style 書き込みを行わずに済むよう、判定に必要な最小限のキャッシュをここへ集約する。
+  lastPointerClientY: null as number | null,
+  controlsSafeTop: null as number | null,
+  controlsSafeAreaDirty: true,
+  lastWrapperPointerEvents: null as '' | 'auto' | 'none' | null,
   // エディタ内でキーボードショートカットを有効にするモード
   isShortcutModeOn: false,
   // YouTube 字幕 URL の観測結果と、そこから復元するトラック情報。

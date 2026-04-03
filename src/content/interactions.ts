@@ -271,6 +271,11 @@ export function setupInteractionEvents() {
   };
 
   const onMouseMove = (event: MouseEvent) => {
+    // ポインタ位置は「今この瞬間に再生バー付近へ居るか」の判定に使うため、ドラッグ中でなくても更新する。
+    // 歌詞の移動操作と無関係な hover 中でも下側のヒット判定切り替えは必要なので、早期 return より前で記録する。
+    state.lastPointerClientY = event.clientY;
+    state.controlsSafeAreaDirty = true;
+
     if (!state.isDraggingPos) return;
 
     const deltaY = event.clientY - state.dragStartY;
@@ -302,6 +307,10 @@ export function setupInteractionEvents() {
   };
 
   const onMouseUp = (event: MouseEvent) => {
+    // マウスを離した直後の位置も安全領域判定へ反映し、ドラッグ終了後ただちに YouTube 側操作へ戻せるようにする。
+    state.lastPointerClientY = event.clientY;
+    state.controlsSafeAreaDirty = true;
+
     if (!state.isDraggingPos) return;
 
     event.stopPropagation();
