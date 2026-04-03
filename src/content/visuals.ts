@@ -33,11 +33,22 @@ export function updateLinesBadge() {
 }
 
 export function updateSettingsModalUI() {
-  const slider = byId<HTMLInputElement>('yl-lines-slider');
-  if (!slider) return;
+  const linesSlider = byId<HTMLInputElement>('yl-lines-slider');
+  if (linesSlider) {
+    // 内部値 100 は「Max」を意味するが、UI スライダー上は 10 に丸めて扱う。
+    linesSlider.value = String(state.userSettings.visibleLines >= 10 ? 10 : state.userSettings.visibleLines);
+  }
 
-  // 内部値 100 は「Max」を意味するが、UI スライダー上は 10 に丸めて扱う。
-  slider.value = String(state.userSettings.visibleLines >= 10 ? 10 : state.userSettings.visibleLines);
+  const fontSlider = byId<HTMLInputElement>('yl-font-slider');
+  if (fontSlider) {
+    fontSlider.value = String(state.userSettings.fontSize || 28);
+  }
+
+  const lineHeightSlider = byId<HTMLInputElement>('yl-lh-slider');
+  if (lineHeightSlider) {
+    lineHeightSlider.value = String(state.userSettings.lineHeight || 140);
+  }
+
   updateLinesBadge();
 }
 
