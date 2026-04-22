@@ -309,51 +309,28 @@
   position: absolute;
   top: 32px;
   left: 50%;
-  right: auto;
-
-  /* ガラスの質感 */
-  background: rgba(15, 19, 25, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-
-  /* 青白い発光ボーダー */
-  border: 1px solid rgba(10, 132, 255, 0.3);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 15px rgba(10, 132, 255, 0.2),
-    /* 外側のグロー */
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  /* 上部のハイライト */
-
+  background: rgba(28, 28, 32, 0.16);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.15); /* 白フチ */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* 落ち影のみで浮遊感を出す */
   border-radius: 30px;
   padding: 10px 24px;
-
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
   font-family: var(--yl-font-mono);
-  /* 通知は情報の刻印なので等幅フォントが良い */
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-
+  font-weight: 500;
+  letter-spacing: 0.02em;
   opacity: 0;
   pointer-events: none;
   z-index: 2147483647;
-
-  /* アニメーション: ふわっと浮き上がりながら現れる */
-  /* 常に同じ原点から出すため、left:50% と translateX(-50%) をセットで使う。 */
-  transform: translateX(-50%) translateY(-20px) scale(0.95);
-  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  transform: translateX(-50%) translateY(-10px) scale(0.98); /* 移動と縮小の幅を抑えて上品に */
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); /* よりスナッピーなイージング */
 }
 
 #yl-offset-toast.visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0) scale(1);
-  /* 表示中はボーダーが少し強く光る */
-  border-color: rgba(10, 132, 255, 0.6);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(10, 132, 255, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* Drop Zone */
