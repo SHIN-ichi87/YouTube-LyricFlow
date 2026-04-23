@@ -254,6 +254,7 @@ export function setAppPower(isOn: boolean) {
   const uiRoot = byId<HTMLDivElement>('yl-ui');
   const btnLabel = byId<HTMLSpanElement>('yl-btn-label');
   const container = byId<HTMLDivElement>('yl-container');
+  const island = byId<HTMLDivElement>('yl-island');
 
   if (isOn) {
     uiRoot?.classList.remove('yl-app-disabled');
@@ -261,13 +262,22 @@ export function setAppPower(isOn: boolean) {
     if (btnLabel) btnLabel.innerText = 'Lyrics';
     //showToast('Lyrics Studio: Started');
   } else {
-    uiRoot?.classList.add('yl-app-disabled');
+    // 展開状態のまま全体をフェードさせると、幅収縮と opacity 変化が競合して島だけガタつく。
+    // 先に閉じ状態へ戻し、次フレームでオフ用の退場アニメーションへ移る。
+    island?.classList.remove('is-open');
+
     if (container) container.style.display = 'none';
 
     const modeSelector = byId<HTMLDivElement>('yl-mode-selector');
     if (modeSelector) modeSelector.classList.remove('active');
     if (state.isEditorOpen) toggleEditor();
     closeOpenDropdowns();
+
+    window.requestAnimationFrame(() => {
+      if (!state.userSettings.isEnabled) {
+        uiRoot?.classList.add('yl-app-disabled');
+      }
+    });
 
     //showToast('Lyrics Studio: Off');
   }

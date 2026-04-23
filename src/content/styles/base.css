@@ -280,6 +280,7 @@ rt {
     transform 0.6s var(--spring),
     padding 0.6s var(--spring),
     gap 0.6s var(--spring),
+    opacity 0.4s ease,
     background 0.3s ease,
     border-color 0.3s ease,
     box-shadow 0.3s ease;
