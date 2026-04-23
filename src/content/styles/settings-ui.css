@@ -236,15 +236,6 @@
 }
 
 /* 起動ボタン (オフの時) のスタイル変化 */
-.yl-app-disabled #yl-toggle-btn {
-  background: rgba(10, 132, 255, 0.2);
-  /* 起動待機っぽい青 */
-  box-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
-  /* 発光効果 */
-  border-color: rgba(10, 132, 255, 0.5);
-  opacity: 1 !important;
-  /* 強制表示 */
-}
 
 /* シンプルなオフ状態のデザイン */
 

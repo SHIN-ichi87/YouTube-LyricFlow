@@ -266,7 +266,6 @@ export function setAppPower(isOn: boolean) {
 
     const modeSelector = byId<HTMLDivElement>('yl-mode-selector');
     if (modeSelector) modeSelector.classList.remove('active');
-    if (btnLabel) btnLabel.innerText = 'Start';
     if (state.isEditorOpen) toggleEditor();
     closeOpenDropdowns();
 

@@ -281,9 +281,106 @@ rt {
   gap: 8px;
 }
 
+#yl-btn-label {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 60px;
+  white-space: nowrap;
+  transition: max-width 0.25s cubic-bezier(0, 0, 0.2, 1), opacity 0.25s ease;
+}
+
+
+.yl-app-disabled #yl-btn-label {
+  max-width: 0;
+  opacity: 0;
+}
+
+.yl-app-disabled #yl-toggle-btn {
+  padding: 8px 16px;
+  gap: 0;
+}
+
+/* オーラ */
+.yl-app-disabled #yl-toggle-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0; /* ボタンと完全に同じサイズ */
+  border-radius: inherit;
+  background: transparent;
+  
+  box-shadow: 
+    -6px 0 16px 0 rgba(10, 132, 255, 0.7),
+     6px 0 16px 0 rgba(255, 55, 95, 0.7),
+     0 -4px 16px 0 rgba(50, 173, 230, 0.7),
+     0  4px 16px 0 rgba(94, 92, 230, 0.7);
+     
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* くっきりとした光の縁 */
+.yl-app-disabled #yl-toggle-btn::after {
+  content: "";
+  position: absolute;
+  inset: -1px; /* ボタンの外縁にピッタリ沿わせる */
+  border-radius: inherit;
+  
+  /* オーラと同じ色調のグラデーション */
+  background: linear-gradient(
+    135deg,
+    #0A84FF,
+    #BF5AF2,
+    #FF375F,
+    #32ADE6,
+    #0A84FF
+  );
+  background-size: 200% 200%;
+  
+  /* 1pxの極細の線だけを残し、ガラスとオーラの繋がりを */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px; 
+  
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  z-index: 1; /* ガラスの少し上に乗せる */
+  pointer-events: none;
+}
+
 #yl-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   transform: scale(1.02);
+}
+
+.yl-app-disabled #yl-toggle-btn:hover {
+  border-color: transparent;
+  background: rgba(10, 10, 10, 0.4);
+}
+
+@keyframes aura-hue-spin {
+  0% { filter: hue-rotate(-80deg); }
+  100% { filter: hue-rotate(280deg); }
+}
+
+.yl-app-disabled #yl-toggle-btn:hover::before,
+.yl-app-disabled #yl-toggle-btn:hover::after {
+  opacity: 1; /* オーラとフィラメントが同時に出現 */
+  animation: aura-hue-spin 4s linear infinite; /* 色相を同期して回転させる */
+}
+
+#yl-toggle-btn svg {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.4s ease, filter 0.4s ease;
+  transform-origin: center;
+  transform: translateX(-1px);
+}
+
+.yl-app-disabled #yl-toggle-btn:hover svg {
+  transform: translateX(-1px) translateY(-1px) scale(1.05);
+  stroke: #ffffff;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
 }
 
 #yl-top-controls {
