@@ -186,6 +186,27 @@
   text-shadow: 0 0 10px rgba(10, 132, 255, 0.5);
 }
 
+/* 通知用のポップアニメーション */
+@keyframes yl-pop-text {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.12);
+    color: #0A84FF;
+    text-shadow: 0 0 12px rgba(10, 132, 255, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    color: inherit;
+    text-shadow: none;
+  }
+}
+
+.yl-island-status.pop-anim {
+  animation: yl-pop-text 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
 /* 区切り線 (Separator) */
 .yl-island-separator {
   width: 1px;

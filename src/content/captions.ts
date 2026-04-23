@@ -296,7 +296,7 @@ export async function tryAutoImportCaptions(force = false) {
 
       const primaryLabel = primaryLangCode.toUpperCase();
       const secondaryLabel = secondaryLang !== 'none' ? ` + ${secondaryLang.toUpperCase()}` : '';
-      showToast(`Synced: ${primaryLabel}${secondaryLabel}`);
+      //showToast(`Synced: ${primaryLabel}${secondaryLabel}`);
     }
   } catch (error) {
     warnCaption('Automatic caption import failed.', error);

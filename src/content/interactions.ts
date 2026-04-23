@@ -122,7 +122,16 @@ export function toggleVideoPlay() {
 export function adjustOffset(amount: number) {
   // 0.1 秒刻みを保つため、毎回小数 1 桁へ丸めて誤差蓄積を抑える。
   state.globalOffset = Math.round((state.globalOffset + amount) * 10) / 10;
-  showToast(`Offset: ${state.globalOffset > 0 ? '+' : ''}${state.globalOffset.toFixed(1)}s`);
+
+  //showToast(`Offset: ${state.globalOffset > 0 ? '+' : ''}${state.globalOffset.toFixed(1)}s`);
+  const statusEl = document.getElementById('yl-island-text');
+  if (statusEl) {
+    statusEl.classList.remove('pop-anim');
+    // リフローを強制してアニメーションを再トリガー
+    void statusEl.offsetWidth; 
+    statusEl.classList.add('pop-anim');
+  }
+
   void import('./visuals').then(({ updateIslandStatus }) => updateIslandStatus());
 }
 
@@ -324,7 +333,7 @@ export function setupInteractionEvents() {
     if (state.hasMoved) {
       // 実際に位置変更があった時だけ永続化して、クリックだけのケースでは保存しない。
       void import('./lyrics').then(({ saveSettings }) => saveSettings());
-      showToast('Position Saved');
+      //showToast('Position Saved');
     }
   };
 

@@ -259,7 +259,7 @@ export function setAppPower(isOn: boolean) {
     uiRoot?.classList.remove('yl-app-disabled');
     if (container) container.style.display = '';
     if (btnLabel) btnLabel.innerText = 'Lyrics';
-    showToast('Lyrics Studio: Started');
+    //showToast('Lyrics Studio: Started');
   } else {
     uiRoot?.classList.add('yl-app-disabled');
     if (container) container.style.display = 'none';
@@ -269,7 +269,7 @@ export function setAppPower(isOn: boolean) {
     if (state.isEditorOpen) toggleEditor();
     closeOpenDropdowns();
 
-    showToast('Lyrics Studio: Off');
+    //showToast('Lyrics Studio: Off');
   }
 }
 
