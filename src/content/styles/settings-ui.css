@@ -224,14 +224,20 @@
 }
 
 /* アプリ OFF 時は起動ボタンだけ残し、誤操作につながる UI を一括で隠す。 */
-.yl-app-disabled #yl-island,
 .yl-app-disabled #yl-editor,
 .yl-app-disabled #yl-container,
 .yl-app-disabled #yl-settings-modal,
-.yl-app-disabled #yl-bg-plate,
-.yl-app-disabled #yl-mode-selector {
+.yl-app-disabled #yl-bg-plate {
   display: none !important;
   opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* UIコントロール（島、モード）のスライドインのための非表示状態 */
+.yl-app-disabled #yl-island,
+.yl-app-disabled #yl-mode-selector {
+  opacity: 0 !important;
+  transform: translateX(20px) scale(0.9) !important;
   pointer-events: none !important;
 }
 

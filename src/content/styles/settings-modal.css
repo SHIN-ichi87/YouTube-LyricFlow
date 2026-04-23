@@ -168,7 +168,6 @@
 
 /* ボタン類を常にGPUレイヤーに固定し、アニメーション時の描画モード切り替えを防ぐ */
 .yl-btn,
-#yl-toggle-btn,
 .yl-customize-btn {
   backface-visibility: hidden;
   transform: translateZ(0);

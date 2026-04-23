@@ -274,7 +274,15 @@ rt {
   font-weight: 600;
   font-size: 13px;
   pointer-events: auto;
-  transition: all 0.25s cubic-bezier(0, 0, 0.2, 1);
+  transform: scale(1) translateZ(0);
+  transform-origin: center right;
+  transition:
+    transform 0.6s var(--spring),
+    padding 0.6s var(--spring),
+    gap 0.6s var(--spring),
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
@@ -286,22 +294,28 @@ rt {
   overflow: hidden;
   max-width: 60px;
   white-space: nowrap;
-  transition: max-width 0.25s cubic-bezier(0, 0, 0.2, 1), opacity 0.25s ease;
+  transform-origin: right center;
+  transition:
+    max-width 0.26s ease,
+    transform 0.6s var(--spring),
+    opacity 0.22s ease;
 }
 
 
 .yl-app-disabled #yl-btn-label {
   max-width: 0;
+  transform: scaleX(0.76) scaleY(0.9);
   opacity: 0;
 }
 
 .yl-app-disabled #yl-toggle-btn {
   padding: 8px 16px;
   gap: 0;
+  transform: scale(0.9) translateZ(0);
 }
 
 /* オーラ */
-.yl-app-disabled #yl-toggle-btn::before {
+#yl-toggle-btn::before {
   content: "";
   position: absolute;
   inset: 0; /* ボタンと完全に同じサイズ */
@@ -321,7 +335,7 @@ rt {
 }
 
 /* くっきりとした光の縁 */
-.yl-app-disabled #yl-toggle-btn::after {
+#yl-toggle-btn::after {
   content: "";
   position: absolute;
   inset: -1px; /* ボタンの外縁にピッタリ沿わせる */
@@ -352,7 +366,7 @@ rt {
 
 #yl-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  transform: scale(1.02);
+  transform: scale(1.02) translateZ(0);
 }
 
 .yl-app-disabled #yl-toggle-btn:hover {
