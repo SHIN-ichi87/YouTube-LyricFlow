@@ -50,6 +50,7 @@ export interface DropdownOption {
 
 export interface DropdownContainerElement extends HTMLDivElement {
   updateOptions?: (options: DropdownOption[]) => void;
+  setValue?: (value: string) => void;
 }
 
 export interface OutsideClickBinding {

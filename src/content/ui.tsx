@@ -314,6 +314,7 @@ function createCustomDropdown(
   const selectEl = document.createElement('div');
   selectEl.className = 'yl-custom-select';
   selectEl.id = id;
+  let selectedValue = initialValue;
 
   let displayText = 'Select...';
   if (initialValue) {
@@ -346,7 +347,7 @@ function createCustomDropdown(
       checkSpan.textContent = '✓';
       optionDiv.append(labelSpan, checkSpan);
 
-      if (initialValue === option.value) {
+      if (selectedValue === option.value) {
         optionDiv.classList.add('selected');
       }
 
@@ -359,6 +360,7 @@ function createCustomDropdown(
       optionDiv.onclick = (event) => {
         event.stopPropagation();
         onChange(option.value);
+        selectedValue = option.value;
 
         currentValue.innerText = option.label;
 
@@ -397,6 +399,12 @@ function createCustomDropdown(
   container.appendChild(selectEl);
   container.appendChild(optionsEl);
   container.updateOptions = renderOptions;
+  container.setValue = (value: string) => {
+    selectedValue = value;
+    const found = options.find((option) => option.value === value);
+    currentValue.innerText = found?.label || 'Select...';
+    renderOptions(options);
+  };
 
   return container;
 }
@@ -496,26 +504,26 @@ function createSettingsModal(root: HTMLElement) {
   setupDraggable(modal, modal.querySelector<HTMLElement>('.yl-modal-header'));
 
   const fontWrapper = modal.querySelector<HTMLDivElement>('#yl-font-custom-wrapper');
+  let fontDropdown: DropdownContainerElement | null = null;
   if (fontWrapper) {
     // Appearance のフォント選択だけは汎用 dropdown を再利用して見た目を統一する。
-    fontWrapper.appendChild(
-      createCustomDropdown(
-        null,
-        'yl-font-select-custom',
-        [
-          { label: 'Rounded (Soft)', value: 'rounded' },
-          { label: 'Standard (Modern)', value: 'standard' },
-          { label: 'Serif (Cinema)', value: 'serif' },
-          { label: 'Mono (Code)', value: 'mono' }
-        ],
-        (value) => {
-          state.userSettings.fontFamily = value as typeof state.userSettings.fontFamily;
-          applyVisualSettings();
-          saveSettings();
-        },
-        state.userSettings.fontFamily || 'serif'
-      )
+    fontDropdown = createCustomDropdown(
+      null,
+      'yl-font-select-custom',
+      [
+        { label: 'Rounded (Soft)', value: 'rounded' },
+        { label: 'Standard (Modern)', value: 'standard' },
+        { label: 'Serif (Cinema)', value: 'serif' },
+        { label: 'Mono (Code)', value: 'mono' }
+      ],
+      (value) => {
+        state.userSettings.fontFamily = value as typeof state.userSettings.fontFamily;
+        applyVisualSettings();
+        saveSettings();
+      },
+      state.userSettings.fontFamily || 'serif'
     );
+    fontWrapper.appendChild(fontDropdown);
   }
 
   // Reset 群は slider の見た目値と state の内部値を同時に戻す必要がある。
@@ -551,6 +559,16 @@ function createSettingsModal(root: HTMLElement) {
     };
   }
 
+  byId<HTMLButtonElement>('yl-reset-appearance-btn')!.onclick = () => {
+    state.userSettings.fontFamily = 'serif';
+    state.userSettings.showPlate = false;
+    fontDropdown?.setValue?.('serif');
+    updatePlateBtn();
+    applyVisualSettings();
+    saveSettings();
+    showToast('Appearance Reset');
+  };
+
   byId<HTMLButtonElement>('yl-close-settings-btn')!.onclick = toggleSettingsModal;
   byId<HTMLInputElement>('yl-lines-slider')!.oninput = (event) => {
     const value = parseInt((event.target as HTMLInputElement).value, 10);
@@ -576,6 +594,16 @@ function createSettingsModal(root: HTMLElement) {
     applyVisualSettings();
     saveSettings();
     showToast('Horizontal Position Reset');
+  };
+
+  byId<HTMLButtonElement>('yl-reset-position-btn')!.onclick = () => {
+    state.userSettings.verticalPos = 50;
+    state.userSettings.horizontalPos = 50;
+    const positionSlider = byId<HTMLInputElement>('yl-pos-slider');
+    if (positionSlider) positionSlider.value = '50';
+    applyVisualSettings();
+    saveSettings();
+    showToast('Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-close-all-btn')!.onclick = () => {
