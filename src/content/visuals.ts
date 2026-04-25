@@ -124,7 +124,7 @@ export function applyVisualSettings() {
     };
 
     // fontFamily の文字列は state 上の列挙値で持ち、実際のフォントスタックだけここで解決する。
-    wrapper.style.setProperty('--yl-font-current', fontMap[state.userSettings.fontFamily || 'rounded']);
+    wrapper.style.setProperty('--yl-font-current', fontMap[state.userSettings.fontFamily || 'serif']);
   }
 
   if (plate) {

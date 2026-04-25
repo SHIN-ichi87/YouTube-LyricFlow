@@ -177,7 +177,7 @@
 
 /* ホバー時のtransformにも translateZ(0) を指定してピクセルを安定させる */
 #yl-toggle-btn:hover {
-  transform: scale(1.02) translateZ(0);
+  transform: scale(1) translateZ(0);
 }
 
 #yl-download-btn:hover {

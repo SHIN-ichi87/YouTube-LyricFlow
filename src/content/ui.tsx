@@ -262,6 +262,8 @@ export function setAppPower(isOn: boolean) {
     if (btnLabel) btnLabel.innerText = 'Lyrics';
     //showToast('Lyrics Studio: Started');
   } else {
+    const toggleBtn = byId<HTMLButtonElement>('yl-toggle-btn');
+    if (toggleBtn) toggleBtn.classList.remove('turning-on');
     // 展開状態のまま全体をフェードさせると、幅収縮と opacity 変化が競合して島だけガタつく。
     // 先に閉じ状態へ戻し、次フレームでオフ用の退場アニメーションへ移る。
     island?.classList.remove('is-open');
@@ -508,7 +510,7 @@ function createSettingsModal(root: HTMLElement) {
           applyVisualSettings();
           saveSettings();
         },
-        state.userSettings.fontFamily || 'rounded'
+        state.userSettings.fontFamily || 'serif'
       )
     );
   }
@@ -654,11 +656,17 @@ export function initUI() {
   const toggleBtn = createToggleButton();
   toggleBtn.onclick = () => {
     if (!state.userSettings.isEnabled) {
+      toggleBtn.classList.add('turning-on');
       setAppPower(true);
     } else {
       toggleEditor();
     }
   };
+
+  toggleBtn.addEventListener('mouseleave', () => {
+    toggleBtn.classList.remove('turning-on');
+  });
+
   uiRoot.appendChild(toggleBtn);
 
   // 右上補助 UI 群は topControls にまとめ、横並びアニメーションの対象にする。

@@ -367,12 +367,32 @@ rt {
 
 #yl-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  transform: scale(1.02) translateZ(0);
+  transform: scale(1) translateZ(0);
 }
 
 .yl-app-disabled #yl-toggle-btn:hover {
   border-color: transparent;
-  background: rgba(10, 10, 10, 0.4);
+  background: rgba(0, 0, 0, 0.75); /* オーラを際立たせる */
+}
+
+/* ONになった直後の専用アニメーション（ホバー中のみ発動） */
+#yl-toggle-btn.turning-on:hover {
+   /* 普段のtransitionには影響を与えず、この瞬間だけ2.5秒のアニメーションで上書きする */
+   animation: yl-turn-on-fade 1.8s ease forwards;
+}
+@keyframes yl-turn-on-fade {
+   0% { 
+       background: rgba(0, 0, 0, 0.75);
+   }
+   20% { 
+       background: rgba(20, 20, 20, 0.4);
+   }
+   35% { 
+       background: rgba(20, 20, 20, 0.4);
+   }
+   75% { 
+       background: rgba(255, 255, 255, 0.15);
+   }
 }
 
 @keyframes aura-hue-spin {
@@ -393,7 +413,7 @@ rt {
 }
 
 .yl-app-disabled #yl-toggle-btn:hover svg {
-  transform: translateX(-1px) translateY(-1px) scale(1.05);
+  transform: translateX(-1px) translateY(-1px) scale(1);
   stroke: #ffffff;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
 }

@@ -100,7 +100,7 @@ export const state = {
     lineHeight: 140,
     primaryLang: 'auto',
     secondaryLang: 'ja',
-    fontFamily: 'standard',
+    fontFamily: 'serif',
     showPlate: false
   } as UserSettings,
   // 補助 UI の遅延処理や、動画ごとのカテゴリ判定キャッシュ。
