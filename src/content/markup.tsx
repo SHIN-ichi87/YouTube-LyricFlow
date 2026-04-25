@@ -124,6 +124,39 @@ export function EditorMarkup({ fontSize, lineHeight }: { fontSize: number | stri
         </button>
         <textarea id="yl-textarea" placeholder="[00:00.00] Lyrics will appear here..."></textarea>
       </div>
+      <div id="yl-shortcut-guide" class="yl-shortcut-guide" aria-hidden="true">
+        <div class="yl-shortcut-guide-title">Shortcut Mode</div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>K</kbd>
+          <span>現在時刻を打刻</span>
+        </div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>I</kbd>
+          <span>直前の打刻を削除</span>
+        </div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>Space</kbd>
+          <span>再生 / 一時停止</span>
+        </div>
+        <div class="yl-shortcut-guide-title yl-shortcut-guide-subtitle">Always Available</div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>Alt K</kbd>
+          <span>現在時刻を打刻</span>
+        </div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>Alt I</kbd>
+          <span>直前の打刻を削除</span>
+        </div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>Alt J/L</kbd>
+          <span>オフセット -/+ 0.1s</span>
+        </div>
+        <div class="yl-shortcut-guide-row">
+          <kbd>Ctrl Space</kbd>
+          <span>再生 / 一時停止</span>
+        </div>
+        <div class="yl-shortcut-guide-note">入力欄から離れると自動OFF</div>
+      </div>
 
       {/* Apply / Export は本文編集の直後に触る主操作として独立させる。 */}
       <div id="yl-toolbar">

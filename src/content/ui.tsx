@@ -755,15 +755,23 @@ export function initUI() {
 
   const shortcutBtn = editor.querySelector<HTMLButtonElement>('#yl-shortcut-toggle-btn');
   const textarea = editor.querySelector<HTMLTextAreaElement>('#yl-textarea');
+  const shortcutGuide = editor.querySelector<HTMLDivElement>('#yl-shortcut-guide');
+  const updateShortcutModeUI = () => {
+    editor.classList.toggle('shortcut-guide-visible', state.isShortcutModeOn);
+    shortcutBtn?.classList.toggle('active', state.isShortcutModeOn);
+    shortcutGuide?.classList.toggle('visible', state.isShortcutModeOn);
+    shortcutGuide?.setAttribute('aria-hidden', state.isShortcutModeOn ? 'false' : 'true');
+  };
+
   if (shortcutBtn && textarea) {
-    shortcutBtn.classList.toggle('active', state.isShortcutModeOn);
+    updateShortcutModeUI();
     
     // ボタンのクリック時にテキストエリアからフォーカスが外れないよう、mousedown で blur を防ぐ
     shortcutBtn.onmousedown = (event) => event.preventDefault();
     
     shortcutBtn.onclick = () => {
       state.isShortcutModeOn = !state.isShortcutModeOn;
-      shortcutBtn.classList.toggle('active', state.isShortcutModeOn);
+      updateShortcutModeUI();
       showToast(state.isShortcutModeOn ? 'Shortcuts: ON' : 'Shortcuts: OFF');
 
       // オンにした場合は確実にテキスト入力へフォーカスを戻す
@@ -777,7 +785,7 @@ export function initUI() {
     const onBlur = () => {
       if (state.isShortcutModeOn) {
         state.isShortcutModeOn = false;
-        shortcutBtn.classList.remove('active');
+        updateShortcutModeUI();
         showToast('Shortcuts: Auto OFF');
       }
     };

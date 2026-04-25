@@ -99,7 +99,15 @@
   /* 内側の影で奥行きを強調 */
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
 
-  transition: all 0.2s ease-in-out;
+  transition:
+    height 0.24s cubic-bezier(0.19, 1, 0.22, 1),
+    background 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+#yl-editor.shortcut-guide-visible #yl-textarea {
+  height: 180px;
 }
 
 /* フォーカス時: 境界線が光り、入力への没入感を高める */
@@ -182,6 +190,101 @@
   border-color: rgba(10, 132, 255, 0.6);
   color: #0A84FF;
   box-shadow: 0 0 10px rgba(10, 132, 255, 0.3);
+}
+
+.yl-shortcut-guide {
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(10, 14, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-width: 0;
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 36px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  font-family: var(--yl-font-stack);
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-4px);
+  transition:
+    max-height 0.24s cubic-bezier(0.19, 1, 0.22, 1),
+    margin 0.24s cubic-bezier(0.19, 1, 0.22, 1),
+    padding 0.24s cubic-bezier(0.19, 1, 0.22, 1),
+    border-width 0.24s ease,
+    opacity 0.2s ease,
+    transform 0.24s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.yl-shortcut-guide.visible {
+  max-height: 250px;
+  margin-top: -8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-width: 1px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.yl-shortcut-guide-title {
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.yl-shortcut-guide-subtitle {
+  margin-top: 8px;
+}
+
+.yl-shortcut-guide-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.yl-shortcut-guide-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.yl-shortcut-guide kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 22px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-family: var(--yl-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.yl-shortcut-guide-note {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(235, 235, 245, 0.58);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 /* Buttons */
