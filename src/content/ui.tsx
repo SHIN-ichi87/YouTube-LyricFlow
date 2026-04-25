@@ -247,8 +247,11 @@ export function toggleEditor() {
 
 // ON/OFF は表示制御だけでなく、YouTube SPA 上での復帰ラベルもここで統一する。
 // DOMの表示と非表示をバラバラに行うと、動画切り替え時にボタンの文字と実際の状態がズレるなど、状態の不整合が起きやすいため。
-export function setAppPower(isOn: boolean) {
+export function setAppPower(isOn: boolean, isManualAction: boolean = false) {
   state.userSettings.isEnabled = isOn;
+  if (isManualAction) {
+    state.userSettings.isManuallyDisabled = !isOn;
+  }
   saveSettings();
 
   const uiRoot = byId<HTMLDivElement>('yl-ui');
@@ -447,7 +450,7 @@ function createDynamicIsland() {
   // Dynamic Island自体に「ホバー／クリックで開く」判定があるため、子ボタンのクリックが親に伝わると予期せぬ挙動になる。
   island.querySelector<HTMLButtonElement>('#yl-power-off-btn')!.onclick = (event) => {
     event.stopPropagation();
-    setAppPower(false);
+    setAppPower(false, true);
   };
 
   island.querySelector<HTMLButtonElement>('#yl-island-toggle')!.onclick = (event) => {
@@ -657,7 +660,7 @@ export function initUI() {
   toggleBtn.onclick = () => {
     if (!state.userSettings.isEnabled) {
       toggleBtn.classList.add('turning-on');
-      setAppPower(true);
+      setAppPower(true, true);
     } else {
       toggleEditor();
     }
@@ -889,14 +892,16 @@ export async function bootNavigation() {
 
     if (isMusic) {
       // 音楽動画なら自動起動し、保存歌詞または字幕からデータを復元する。
-      if (!state.userSettings.isEnabled) setAppPower(true);
+      if (!state.userSettings.isEnabled && !state.userSettings.isManuallyDisabled) {
+        setAppPower(true, false);
+      }
       loadLyricsFromStorage();
       const { startSyncLyricsLoop } = await import('./runtime');
       startSyncLyricsLoop();
       byId<HTMLDivElement>('yl-container')?.classList.add('active');
     } else if (state.userSettings.isEnabled) {
       // 非音楽動画へ来たら、前の動画の UI を残さないため明示的に OFF に戻す。
-      setAppPower(false);
+      setAppPower(false, false);
     }
   } else if (state.userSettings.isEnabled) {
     // 同一動画で UI だけ作り直されたケースでは、復元処理だけを再実行する。

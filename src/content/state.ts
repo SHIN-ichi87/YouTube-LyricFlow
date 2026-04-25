@@ -14,6 +14,7 @@ export interface RawSubtitleLine {
 
 export interface UserSettings {
   isEnabled: boolean;
+  isManuallyDisabled: boolean;
   fontSize: number | string;
   verticalPos: number;
   horizontalPos: number;
@@ -93,6 +94,7 @@ export const state = {
   // 初回起動時や新規設定項目が追加されたアップデート直後でも、表示が壊れないよう安全なフォールバックを確保する意図。
   userSettings: {
     isEnabled: false,
+    isManuallyDisabled: false,
     fontSize: 28,
     verticalPos: 50,
     horizontalPos: 50,
