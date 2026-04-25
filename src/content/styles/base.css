@@ -219,6 +219,18 @@
   /*0 0 60px rgba(255, 255, 255, 0.3) /* 3層目: 周囲に広がる雰囲気の光 */
 }
 
+/* 手動スクロール・ドラッグ中は、全行のぼかしを即座に解除してスキャンしやすくする */
+#yl-scroll-wrapper.is-interacting .yl-line {
+  filter: blur(0) !important;
+  opacity: 0.85 !important;
+  transition: none !important;
+}
+
+/* current行はそのまま一番目立たせる */
+#yl-scroll-wrapper.is-interacting .yl-line.current {
+  opacity: 1 !important;
+}
+
 /* --- Ruby & Sub Text --- */
 rt {
   font-size: 0.45em;
