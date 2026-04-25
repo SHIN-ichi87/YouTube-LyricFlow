@@ -225,7 +225,7 @@ export function resetInteractionTimer() {
     if (wrapper) wrapper.classList.remove('is-interacting');
 
     applyVisualSettings();
-  }, 2500);
+  }, 2000);
 }
 
 // ホイールとドラッグを同居させるため、操作開始と終了の状態遷移を明示する。
