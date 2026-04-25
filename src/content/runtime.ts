@@ -1,7 +1,7 @@
 import { byId, state } from './state';
 import { bootNavigation } from './ui';
 import { spawnParticlesFromElement } from './interactions';
-import { applyMaskLayer, clearMaskLayer, updateIslandStatus } from './visuals';
+import { applyMaskLayer, applyVisualSettings, clearMaskLayer, updateIslandStatus } from './visuals';
 
 const CONTROLS_SAFE_MARGIN_PX = 8;
 let trackedPlayer: HTMLDivElement | null = null;
@@ -15,14 +15,21 @@ function markControlsSafeAreaDirty() {
   state.controlsSafeAreaDirty = true;
 }
 
+function refreshViewportSensitiveLayout() {
+  markControlsSafeAreaDirty();
+  requestAnimationFrame(() => {
+    applyVisualSettings();
+  });
+}
+
 // グローバルな viewport 変化だけを一度だけ購読し、プレイヤー安全領域の再計算タイミングを絞る。
 // resize / fullscreenchange はコントロール帯の Y 座標を大きく変える代表例なので、ここだけ拾えば常時監視を避けられる。
 function bindControlsSafeAreaListeners() {
   if (controlsListenersBound) return;
   controlsListenersBound = true;
 
-  window.addEventListener('resize', markControlsSafeAreaDirty);
-  document.addEventListener('fullscreenchange', markControlsSafeAreaDirty);
+  window.addEventListener('resize', refreshViewportSensitiveLayout);
+  document.addEventListener('fullscreenchange', refreshViewportSensitiveLayout);
 }
 
 // YouTube 側の class/style 変更を監視し、コントロールの自動表示・自動非表示に追従する。

@@ -6,6 +6,10 @@ interface MaskStyles {
   clipPath: string;
 }
 
+const NORMAL_LINE_MARGIN_EM = 0.42;
+const CURRENT_LINE_MARGIN_EM = 1.1;
+const CURRENT_LINE_SCALE = 1.15;
+
 // オフセット表示は Dynamic Island 内の単一ラベルを更新するだけに絞る。
 // 高頻度で更新される数値のため、DOM全体の再レンダリングを回避してパフォーマンスの低下を抑えるため。
 export function updateIslandStatus() {
@@ -63,8 +67,29 @@ function getMaskStyles(): MaskStyles {
   }
 
   const center = parseFloat(String(state.userSettings.verticalPos));
-  const spread = lines * 7;
-  const fade = 5;
+  const container = byId<HTMLDivElement>('yl-container');
+  const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
+  const line = wrapper?.querySelector<HTMLDivElement>('.yl-line') || null;
+  const containerHeight = container?.getBoundingClientRect().height || 0;
+  const fontSizePx = line ? parseFloat(window.getComputedStyle(line).fontSize) : 0;
+  const lineHeightValue = Number(state.userSettings.lineHeight || 140) / 100;
+  const safeLines = Math.max(1, lines);
+  const maskScale = Math.max(0.34, safeLines / 3);
+  const maskLines = safeLines / 3;
+  const fallbackSpread = maskLines * 7;
+
+  let spread = fallbackSpread;
+  let fade = 5;
+
+  if (containerHeight > 0 && fontSizePx > 0) {
+    const normalLineHeight = fontSizePx * lineHeightValue + fontSizePx * NORMAL_LINE_MARGIN_EM * 2;
+    const currentLineHeight = fontSizePx * lineHeightValue * CURRENT_LINE_SCALE + fontSizePx * CURRENT_LINE_MARGIN_EM * 2;
+    const visibleHeightPx = currentLineHeight * maskScale + Math.max(0, maskLines - 1) * normalLineHeight;
+
+    spread = Math.min(100, (visibleHeightPx / containerHeight) * 100);
+    fade = Math.min(12, Math.max(3, (normalLineHeight * 0.65 / containerHeight) * 100));
+  }
+
   const topStop = center - spread / 2;
   const bottomStop = center + spread / 2;
   const gradient = `linear-gradient(to bottom,

@@ -427,7 +427,7 @@
 
 /* 間奏行は少し高さを確保してゆったり見せる */
 .yl-line:has(.yl-instrumental) {
-  margin: 6vh 0;
+  margin: 1.8em 0;
 }
 
 /* Mask Layer */
