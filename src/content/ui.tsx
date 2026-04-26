@@ -874,6 +874,7 @@ export function initUI() {
     saveSettings();
   };
   byId<HTMLButtonElement>('yl-reset-font-btn')!.onclick = () => {
+    beginLayoutShift();
     // Reset は slider UI と state の両方を戻してから保存する。
     state.userSettings.fontSize = 28;
     byId<HTMLInputElement>('yl-font-slider')!.value = '28';
@@ -881,6 +882,7 @@ export function initUI() {
     saveSettings();
   };
   byId<HTMLButtonElement>('yl-reset-lh-btn')!.onclick = () => {
+    beginLayoutShift();
     state.userSettings.lineHeight = 140;
     byId<HTMLInputElement>('yl-lh-slider')!.value = '140';
     applyVisualSettings();
