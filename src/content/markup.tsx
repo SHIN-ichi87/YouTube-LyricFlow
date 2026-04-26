@@ -259,7 +259,7 @@ export function SettingsModalMarkup() {
           <div class="yl-control-row" style={{ justifyContent: 'space-between' }}>
             <div id="yl-font-custom-wrapper" style={{ width: '48%' }}></div>
             <button id="yl-plate-toggle" class="yl-btn btn-secondary" style={{ width: '48%', padding: '6px' }}>
-              <span id="yl-plate-status">Plate: Off</span>
+              <span id="yl-plate-status">BG: Off</span>
             </button>
           </div>
         </div>

@@ -181,5 +181,5 @@
 }
 
 #yl-download-btn:hover {
-  transform: translateY(-1px) translateZ(0) !important;
+  transform: translateZ(0) !important;
 }

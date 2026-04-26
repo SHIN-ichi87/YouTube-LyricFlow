@@ -201,7 +201,12 @@ export function loadSettings() {
     chrome.storage.local.get(['yl_user_settings'], (result) => {
       const stored = result.yl_user_settings;
       if (stored && typeof stored === 'object') {
-        state.userSettings = { ...state.userSettings, ...(stored as Partial<UserSettings>) };
+        const { showPlate, ...storedSettings } = stored as Partial<UserSettings> & { showPlate?: boolean };
+        state.userSettings = {
+          ...state.userSettings,
+          ...storedSettings,
+          bgMode: storedSettings.bgMode ?? (showPlate ? 'plate' : state.userSettings.bgMode)
+        };
       }
       resolve();
     });

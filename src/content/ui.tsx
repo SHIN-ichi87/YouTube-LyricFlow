@@ -2,7 +2,7 @@ import { render } from 'preact';
 
 import { byId, state, type DropdownContainerElement, type DropdownOption, type OutsideClickBinding } from './state';
 import { DynamicIslandMarkup, EditorMarkup, ModeSelectorMarkup, SettingsModalMarkup } from './markup';
-import { applyVisualSettings, updateLinesBadge, updateSettingsModalUI } from './visuals';
+import { applyVisualSettings, updateBgModeButton, updateLinesBadge, updateSettingsModalUI } from './visuals';
 import { adjustOffset, setupDragAndDrop, setupDraggable, setupInteractionEvents, setupKeyboardEvents, showToast, stampCurrentTime } from './interactions';
 import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updateTrackListUI } from './captions';
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
@@ -538,22 +538,19 @@ function createSettingsModal(root: HTMLElement) {
   };
 
   const plateToggle = byId<HTMLButtonElement>('yl-plate-toggle');
-  const updatePlateBtn = () => {
-    if (!plateToggle) return;
-    // ボタンの文言と配色は state.showPlate の真偽値から毎回再計算する。
-    const status = byId<HTMLSpanElement>('yl-plate-status');
-    if (status) status.innerText = state.userSettings.showPlate ? 'Plate: ON' : 'Plate: Off';
-    plateToggle.style.background = state.userSettings.showPlate ? 'rgba(10, 132, 255, 0.3)' : '';
-    plateToggle.style.color = state.userSettings.showPlate ? '#fff' : '';
-  };
-
-  updatePlateBtn();
+  updateBgModeButton();
 
   if (plateToggle) {
     plateToggle.onclick = () => {
-      // プレートは表示設定のみなので、歌詞再解析は不要で visual settings の再適用だけで足りる。
-      state.userSettings.showPlate = !state.userSettings.showPlate;
-      updatePlateBtn();
+      if (state.userSettings.bgMode === 'none') {
+        state.userSettings.bgMode = 'plate';
+      } else if (state.userSettings.bgMode === 'plate') {
+        state.userSettings.bgMode = 'cinematic';
+      } else {
+        state.userSettings.bgMode = 'none';
+      }
+
+      updateBgModeButton();
       applyVisualSettings();
       saveSettings();
     };
@@ -561,9 +558,9 @@ function createSettingsModal(root: HTMLElement) {
 
   byId<HTMLButtonElement>('yl-reset-appearance-btn')!.onclick = () => {
     state.userSettings.fontFamily = 'serif';
-    state.userSettings.showPlate = false;
+    state.userSettings.bgMode = 'none';
     fontDropdown?.setValue?.('serif');
-    updatePlateBtn();
+    updateBgModeButton();
     applyVisualSettings();
     saveSettings();
     showToast('Appearance Reset');

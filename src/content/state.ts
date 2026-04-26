@@ -23,7 +23,7 @@ export interface UserSettings {
   primaryLang: string;
   secondaryLang: string;
   fontFamily: 'rounded' | 'standard' | 'serif' | 'mono';
-  showPlate: boolean;
+  bgMode: 'none' | 'plate' | 'cinematic';
 }
 
 export interface CaptionTrack {
@@ -104,7 +104,7 @@ export const state = {
     primaryLang: 'auto',
     secondaryLang: 'ja',
     fontFamily: 'serif',
-    showPlate: false
+    bgMode: 'none'
   } as UserSettings,
   // 補助 UI の遅延処理や、動画ごとのカテゴリ判定キャッシュ。
   settingsOverflowTimer: null as number | null,

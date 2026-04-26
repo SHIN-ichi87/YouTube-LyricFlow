@@ -250,7 +250,7 @@ function tickLyricsSync() {
       applyWrapperHitTesting(wrapper, true);
 
       if (plate) {
-        if (!state.userSettings.showPlate) {
+        if (state.userSettings.bgMode !== 'plate') {
           plate.style.opacity = '0';
         } else {
           // 次の行が間奏（またはアウトロ）かどうかを判定
@@ -275,7 +275,7 @@ function tickLyricsSync() {
         wrapper.style.transform = `translate(-50%, ${-(activeEl.offsetTop + activeEl.offsetHeight / 2)}px)`;
 
         // プレートは現在行の実寸に追従させ、二言語行でも包み込む大きさを保つ。
-        if (plate && state.userSettings.showPlate) {
+        if (plate && state.userSettings.bgMode === 'plate') {
           plate.style.width = `${activeEl.offsetWidth * 1.9 + 100}px`;
           plate.style.height = `${activeEl.offsetHeight * 2.5}px`;
         }

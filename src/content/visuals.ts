@@ -36,6 +36,27 @@ export function updateLinesBadge() {
   el.innerText = state.userSettings.visibleLines >= 10 ? 'Max' : String(state.userSettings.visibleLines);
 }
 
+export function updateBgModeButton() {
+  const plateToggle = byId<HTMLButtonElement>('yl-plate-toggle');
+  if (!plateToggle) return;
+
+  const status = byId<HTMLSpanElement>('yl-plate-status');
+
+  if (state.userSettings.bgMode === 'cinematic') {
+    if (status) status.innerText = 'BG: Cinematic';
+    plateToggle.style.background = 'rgba(175, 82, 222, 0.3)';
+    plateToggle.style.color = '#fff';
+  } else if (state.userSettings.bgMode === 'plate') {
+    if (status) status.innerText = 'BG: Plate';
+    plateToggle.style.background = 'rgba(10, 132, 255, 0.3)';
+    plateToggle.style.color = '#fff';
+  } else {
+    if (status) status.innerText = 'BG: Off';
+    plateToggle.style.background = '';
+    plateToggle.style.color = '';
+  }
+}
+
 export function updateSettingsModalUI() {
   const linesSlider = byId<HTMLInputElement>('yl-lines-slider');
   if (linesSlider) {
@@ -54,6 +75,7 @@ export function updateSettingsModalUI() {
   }
 
   updateLinesBadge();
+  updateBgModeButton();
 }
 
 function getMaskStyles(): MaskStyles {
@@ -152,8 +174,13 @@ export function applyVisualSettings() {
     wrapper.style.setProperty('--yl-font-current', fontMap[state.userSettings.fontFamily || 'serif']);
   }
 
+  const container = byId<HTMLDivElement>('yl-container');
+  if (container) {
+    container.classList.toggle('cinematic-bg', state.userSettings.bgMode === 'cinematic');
+  }
+
   if (plate) {
-    if (state.userSettings.showPlate) {
+    if (state.userSettings.bgMode === 'plate') {
       // プレートの座標は wrapper と常に同期させ、サイズだけ同期ループ側で現在行に追従させる。
       plate.classList.add('visible');
       plate.style.top = `${state.userSettings.verticalPos}%`;
