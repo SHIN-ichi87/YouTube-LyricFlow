@@ -6,6 +6,8 @@ interface MaskStyles {
   clipPath: string;
 }
 
+let layoutShiftTimer: number | null = null;
+
 const NORMAL_LINE_MARGIN_EM = 0.42;
 const CURRENT_LINE_MARGIN_EM = 1.1;
 const CURRENT_LINE_SCALE = 1.15;
@@ -199,4 +201,18 @@ export function applyVisualSettings() {
   }
 
   applyMaskLayer(maskLayer);
+}
+
+export function beginLayoutShift() {
+  const container = byId<HTMLDivElement>('yl-container');
+  if (!container) return;
+
+  container.classList.add('yl-layout-shifting');
+
+  if (layoutShiftTimer) window.clearTimeout(layoutShiftTimer);
+
+  // 操作やリサイズが止まってから150ms後にアニメーションを復帰させる
+  layoutShiftTimer = window.setTimeout(() => {
+    container.classList.remove('yl-layout-shifting');
+  }, 150);
 }

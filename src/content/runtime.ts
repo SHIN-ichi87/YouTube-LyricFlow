@@ -1,7 +1,7 @@
 import { byId, state } from './state';
 import { bootNavigation } from './ui';
 import { spawnParticlesFromElement } from './interactions';
-import { applyMaskLayer, applyVisualSettings, clearMaskLayer, updateIslandStatus } from './visuals';
+import { applyMaskLayer, applyVisualSettings, beginLayoutShift, clearMaskLayer, updateIslandStatus } from './visuals';
 
 const CONTROLS_SAFE_MARGIN_PX = 8;
 let trackedPlayer: HTMLDivElement | null = null;
@@ -17,6 +17,7 @@ function markControlsSafeAreaDirty() {
 
 function refreshViewportSensitiveLayout() {
   markControlsSafeAreaDirty();
+  beginLayoutShift();
   requestAnimationFrame(() => {
     applyVisualSettings();
   });

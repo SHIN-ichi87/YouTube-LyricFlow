@@ -2,7 +2,7 @@ import { render } from 'preact';
 
 import { byId, state, type DropdownContainerElement, type DropdownOption, type OutsideClickBinding } from './state';
 import { DynamicIslandMarkup, EditorMarkup, ModeSelectorMarkup, SettingsModalMarkup } from './markup';
-import { applyVisualSettings, updateBgModeButton, updateLinesBadge, updateSettingsModalUI } from './visuals';
+import { applyVisualSettings, beginLayoutShift, updateBgModeButton, updateLinesBadge, updateSettingsModalUI } from './visuals';
 import { adjustOffset, setupDragAndDrop, setupDraggable, setupInteractionEvents, setupKeyboardEvents, showToast, stampCurrentTime } from './interactions';
 import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updateTrackListUI } from './captions';
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
@@ -568,6 +568,7 @@ function createSettingsModal(root: HTMLElement) {
 
   byId<HTMLButtonElement>('yl-close-settings-btn')!.onclick = toggleSettingsModal;
   byId<HTMLInputElement>('yl-lines-slider')!.oninput = (event) => {
+    beginLayoutShift();
     const value = parseInt((event.target as HTMLInputElement).value, 10);
     // UI 上の 10 は「100 行」ではなく Max を表す内部値 100 に変換する。
     // 10という数値をそのまま行数制約に使うのではなく、事実上「無制限に表示」という特殊フラグとして予約しているため。
@@ -860,12 +861,14 @@ export function initUI() {
 
   byId<HTMLButtonElement>('yl-download-btn')!.onclick = downloadLRC;
   byId<HTMLInputElement>('yl-font-slider')!.oninput = (event) => {
+    beginLayoutShift();
     // editor 側の即時調整項目は oninput でリアルタイム反映する。
     state.userSettings.fontSize = (event.target as HTMLInputElement).value;
     applyVisualSettings();
     saveSettings();
   };
   byId<HTMLInputElement>('yl-lh-slider')!.oninput = (event) => {
+    beginLayoutShift();
     state.userSettings.lineHeight = (event.target as HTMLInputElement).value;
     applyVisualSettings();
     saveSettings();

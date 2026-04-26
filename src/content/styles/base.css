@@ -476,3 +476,11 @@ rt {
 .ytp-autohide #yl-ui:not(:has(#yl-editor.active, #yl-settings-modal.active, #yl-mode-selector.active, .yl-select-options.open, #yl-toggle-btn:hover, #yl-top-controls:hover)) #yl-top-controls {
   pointer-events: none !important;
 }
+
+/* --- Layout Shift Transition Override --- */
+/* リサイズやフォントサイズ変更時の一時的なレイアウト崩れ（ガクガク）を防ぐ */
+#yl-container.yl-layout-shifting #yl-scroll-wrapper,
+#yl-container.yl-layout-shifting .yl-line,
+#yl-container.yl-layout-shifting #yl-bg-plate {
+   transition: none !important;
+}
