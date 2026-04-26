@@ -484,3 +484,12 @@ rt {
 #yl-container.yl-layout-shifting #yl-bg-plate {
    transition: none !important;
 }
+
+/* --- Disable Default Focus Rings --- */
+/* マウス操作後に矢印キー等を操作した際に出るブラウザ標準の枠線を完全に消す */
+#yl-ui *:focus,
+#yl-ui *:focus-visible,
+#yl-container *:focus,
+#yl-container *:focus-visible {
+    outline: none !important;
+}

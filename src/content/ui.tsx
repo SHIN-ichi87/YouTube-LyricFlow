@@ -895,6 +895,17 @@ export function initUI() {
   registerUiCleanup(setupInteractionEvents());
   startTimedTextObserver();
 
+  // UIクリック後にフォーカスを外し、スペースキーの誤爆を防ぐ
+  const onUiClick = () => {
+    const active = document.activeElement;
+    // テキスト入力やスライダー操作中の場合はフォーカスを維持し、それ以外（ボタン等）なら外す
+    if (active instanceof HTMLElement && active.tagName !== 'TEXTAREA' && active.tagName !== 'INPUT') {
+      active.blur();
+    }
+  };
+  uiRoot.addEventListener('click', onUiClick);
+  registerUiCleanup(() => uiRoot.removeEventListener('click', onUiClick));
+
   void loadSettings().then(() => {
     // 永続設定の復元は最後にまとめて行い、初期 DOM 構築中のちらつきを避ける。
     // UI構築途中で各種パラメータを反映し出すと、デフォルト状態から保存状態へと画面がバチバチ切り替わるFOUC現象が起きてしまうため。
