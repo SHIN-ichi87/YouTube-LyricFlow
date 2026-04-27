@@ -386,7 +386,7 @@
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  cursor: grab;
+  cursor: pointer;
   /* 強い光を放つ */
   box-shadow:
     0 0 8px rgba(255, 255, 255, 0.5),
@@ -402,7 +402,7 @@
 }
 
 .yl-slider::-webkit-slider-thumb:active {
-  cursor: grabbing;
+  cursor: pointer;
   transform: scale(1.1);
   background: #e0e0e0;
 }

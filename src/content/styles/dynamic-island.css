@@ -440,3 +440,16 @@
   pointer-events: none;
   /* マウスイベントは通過させ、mask-image / clip-path は JS が visibleLines に応じて更新する。 */
 }
+
+/* --- Sync Button Tactile Feedback (ポコポコ感) --- */
+#yl-island-sync {
+  transition: background 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+  will-change: transform;
+}
+
+#yl-island-sync.is-popping {
+  transform: scale(0.75);
+  background: rgba(255, 255, 255, 0.3);
+  /* 押す瞬間は遅延なく、スッと素早く沈み込ませる */
+  transition: transform 0.05s ease-out, background 0.05s ease-out, color 0.05s ease-out;
+}

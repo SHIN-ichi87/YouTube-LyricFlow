@@ -22,7 +22,7 @@ export interface UserSettings {
   lineHeight: number | string;
   primaryLang: string;
   secondaryLang: string;
-  fontFamily: 'rounded' | 'standard' | 'serif' | 'mono';
+  fontFamily: 'standard' | 'serif' | 'antique' | 'rounded' | 'hachi' | 'dot' | 'rampart' | 'kurenaido';
   bgMode: 'none' | 'plate' | 'cinematic';
 }
 

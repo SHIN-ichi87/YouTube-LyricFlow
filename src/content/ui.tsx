@@ -480,13 +480,18 @@ function createDynamicIsland() {
     event.stopPropagation();
     stampCurrentTime();
 
-    // 成功時はトーストではなく、ボタン自身の色変化で即時フィードバックを返す。
-    // 同期ボタンは頻繁に押される可能性が高いため、その都度トーストが画面を塞ぐと体験を損なうと判断したため。
     const btn = event.currentTarget as HTMLButtonElement;
+    
+    // アイコンの色を青にしつつ、沈み込みクラスを付与
     btn.style.color = '#0A84FF';
+    btn.classList.add('is-popping');
+    
+    window.setTimeout(() => {
+      btn.classList.remove('is-popping');
+    }, 100);
     window.setTimeout(() => {
       btn.style.color = '';
-    }, 300);
+    }, 100);
   };
 
   return island;
@@ -498,6 +503,7 @@ function createSettingsModal(root: HTMLElement) {
   modal.id = 'yl-settings-modal';
   root.appendChild(modal);
   render(<SettingsModalMarkup />, modal);
+  modal.addEventListener('wheel', (event) => event.stopPropagation(), { passive: false });
 
   // モーダルはヘッダー部分だけを持ち手にし、フォーム操作との競合を避ける。
   // モーダル全体をドラッグ領域にすると、スライダーやテキスト入力欄を触ろうとした際にも誤ってドラッグが発動してしまうため。
@@ -511,10 +517,14 @@ function createSettingsModal(root: HTMLElement) {
       null,
       'yl-font-select-custom',
       [
-        { label: 'Rounded (Soft)', value: 'rounded' },
         { label: 'Standard (Modern)', value: 'standard' },
         { label: 'Serif (Cinema)', value: 'serif' },
-        { label: 'Mono (Code)', value: 'mono' }
+        { label: 'Zen Antique', value: 'antique' },
+        { label: 'Rounded (Soft)', value: 'rounded' },
+        { label: 'Hachi Maru Pop', value: 'hachi' },
+        { label: 'DotGothic16', value: 'dot' },
+        { label: 'Rampart One', value: 'rampart' },
+        { label: 'Zen Kurenaido', value: 'kurenaido' }
       ],
       (value) => {
         state.userSettings.fontFamily = value as typeof state.userSettings.fontFamily;
@@ -802,7 +812,17 @@ export function initUI() {
 
       // オンにした場合は確実にテキスト入力へフォーカスを戻す
       if (state.isShortcutModeOn) {
-        textarea.focus();
+        // ブラウザ標準の「ガクッ」とした強制ジャンプを無効化
+        textarea.focus({ preventScroll: true });
+        
+        // その後、自然なアニメーションで一番下までスクロールさせる
+        // CSSの高さ変化アニメーション（0.24s）の完了を待ってからスクロールを実行
+        window.setTimeout(() => {
+          textarea.scrollTo({
+            top: textarea.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 240);
       }
     };
 

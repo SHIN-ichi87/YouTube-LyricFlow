@@ -165,12 +165,16 @@ export function applyVisualSettings() {
     const lineHeightValue = Number(state.userSettings.lineHeight || 140) / 100;
     wrapper.style.setProperty('--yl-line-height', String(lineHeightValue));
 
-    const fontMap = {
-      rounded: 'var(--yl-font-rounded)',
-      serif: 'var(--yl-font-serif)',
-      mono: 'var(--yl-font-mono)',
-      standard: 'var(--yl-font-standard)'
-    };
+    const fontMap: Record<string, string> = {
+        standard: 'var(--yl-font-standard)',
+        serif: 'var(--yl-font-serif)',
+        antique: 'var(--yl-font-antique)',
+        rounded: 'var(--yl-font-rounded)',
+        hachi: 'var(--yl-font-hachi)',
+        dot: 'var(--yl-font-dot)',
+        rampart: 'var(--yl-font-rampart)',
+        kurenaido: 'var(--yl-font-kurenaido)'
+      };
 
     // fontFamily の文字列は state 上の列挙値で持ち、実際のフォントスタックだけここで解決する。
     wrapper.style.setProperty('--yl-font-current', fontMap[state.userSettings.fontFamily || 'serif']);
