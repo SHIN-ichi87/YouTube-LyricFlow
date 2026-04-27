@@ -812,17 +812,29 @@ export function initUI() {
 
       // オンにした場合は確実にテキスト入力へフォーカスを戻す
       if (state.isShortcutModeOn) {
-        // ブラウザ標準の「ガクッ」とした強制ジャンプを無効化
-        textarea.focus({ preventScroll: true });
-        
-        // その後、自然なアニメーションで一番下までスクロールさせる
-        // CSSの高さ変化アニメーション（0.24s）の完了を待ってからスクロールを実行
-        window.setTimeout(() => {
-          textarea.scrollTo({
-            top: textarea.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 240);
+          window.setTimeout(() => {
+            textarea.focus();
+
+            const lines = textarea.value.split('\n');
+            const targetIndex = lines.findIndex((line) => !line.match(/\[\d{2}:\d{2}\.\d{2,3}\]/) && line.trim() !== '');
+
+            if (targetIndex !== -1) {
+              let charCount = 0;
+              for (let i = 0; i < targetIndex; i += 1) {
+                charCount += lines[i].length + 1; // +1 は改行文字(\n)の分
+              }
+              
+              // カーソル位置を該当行の先頭にセット
+              textarea.setSelectionRange(charCount, charCount);
+              
+              // テキストエリアのスクロール位置を調整して、カーソル行が少し上寄りに見えるようにする
+              const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 19;
+              textarea.scrollTo({
+                top: Math.max(0, targetIndex * lineHeight - lineHeight * 2),
+                behavior: 'smooth'
+              });
+            }
+          }, 240);
       }
     };
 
