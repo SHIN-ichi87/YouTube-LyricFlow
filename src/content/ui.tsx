@@ -801,6 +801,74 @@ export function initUI() {
 
   if (shortcutBtn && textarea) {
     updateShortcutModeUI();
+    let shortcutScrollAnimationId: number | null = null;
+
+    const animateTextareaScroll = (targetTop: number) => {
+      if (shortcutScrollAnimationId !== null) {
+        window.cancelAnimationFrame(shortcutScrollAnimationId);
+      }
+
+      const startTop = textarea.scrollTop;
+      const distance = targetTop - startTop;
+      if (Math.abs(distance) < 1) return;
+
+      const duration = Math.min(560, Math.max(320, Math.abs(distance) * 0.55));
+      const startedAt = performance.now();
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        textarea.scrollTop = startTop + distance * eased;
+
+        if (progress < 1) {
+          shortcutScrollAnimationId = window.requestAnimationFrame(tick);
+        } else {
+          shortcutScrollAnimationId = null;
+        }
+      };
+
+      shortcutScrollAnimationId = window.requestAnimationFrame(tick);
+    };
+
+    const getTextareaScrollTopForPosition = (position: number) => {
+      const computed = window.getComputedStyle(textarea);
+      const mirror = document.createElement('div');
+      const marker = document.createElement('span');
+
+      Object.assign(mirror.style, {
+        position: 'fixed',
+        top: '0',
+        left: '-99999px',
+        visibility: 'hidden',
+        pointerEvents: 'none',
+        boxSizing: computed.boxSizing,
+        width: `${textarea.offsetWidth}px`,
+        padding: computed.padding,
+        border: computed.border,
+        font: computed.font,
+        letterSpacing: computed.letterSpacing,
+        lineHeight: computed.lineHeight,
+        tabSize: computed.tabSize,
+        textTransform: computed.textTransform,
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'break-word',
+        wordBreak: computed.wordBreak,
+      });
+
+      mirror.textContent = textarea.value.slice(0, position);
+      marker.textContent = '\u200b';
+      mirror.appendChild(marker);
+      document.body.appendChild(mirror);
+
+      const lineHeight = parseFloat(computed.lineHeight) || 19;
+      const paddingTop = parseFloat(computed.paddingTop) || 0;
+      const borderTop = parseFloat(computed.borderTopWidth) || 0;
+      const markerTop = marker.getBoundingClientRect().top - mirror.getBoundingClientRect().top;
+      const targetTop = markerTop - paddingTop - borderTop - lineHeight * 2;
+      mirror.remove();
+
+      return Math.max(0, Math.min(targetTop, textarea.scrollHeight - textarea.clientHeight));
+    };
     
     // ボタンのクリック時にテキストエリアからフォーカスが外れないよう、mousedown で blur を防ぐ
     shortcutBtn.onmousedown = (event) => event.preventDefault();
@@ -813,26 +881,43 @@ export function initUI() {
       // オンにした場合は確実にテキスト入力へフォーカスを戻す
       if (state.isShortcutModeOn) {
           window.setTimeout(() => {
-            textarea.focus();
+            textarea.focus({ preventScroll: true });
 
             const lines = textarea.value.split('\n');
-            const targetIndex = lines.findIndex((line) => !line.match(/\[\d{2}:\d{2}\.\d{2,3}\]/) && line.trim() !== '');
-
-            if (targetIndex !== -1) {
+            const firstUnstampedIndex = lines.findIndex((line) => !line.match(/\[\d{2}:\d{2}\.\d{2,3}\]/) && line.trim() !== '');
+            let lastLyricsIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i -= 1) {
+              if (lines[i].trim() !== '') {
+                lastLyricsIndex = i;
+                break;
+              }
+            }
+            if (firstUnstampedIndex !== -1 || lastLyricsIndex !== -1) {
               let charCount = 0;
-              for (let i = 0; i < targetIndex; i += 1) {
-                charCount += lines[i].length + 1; // +1 は改行文字(\n)の分
+
+              if (firstUnstampedIndex !== -1) {
+                for (let i = 0; i < firstUnstampedIndex; i += 1) {
+                  charCount += lines[i].length + 1; // +1 は改行文字(\n)の分
+                }
+              } else {
+                // 全行が打刻済みなら、最後の歌詞の直下にある空行へカーソルを置く。
+                for (let i = 0; i <= lastLyricsIndex; i += 1) {
+                  charCount += lines[i].length + 1;
+                }
+
+                // 末尾に空行がまだなければ、カーソルを置けるよう改行を1つだけ追加する。
+                if (lastLyricsIndex === lines.length - 1) {
+                  textarea.value += '\n';
+                }
               }
               
-              // カーソル位置を該当行の先頭にセット
+              const scrollStart = textarea.scrollTop;
               textarea.setSelectionRange(charCount, charCount);
-              
-              // テキストエリアのスクロール位置を調整して、カーソル行が少し上寄りに見えるようにする
-              const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 19;
-              textarea.scrollTo({
-                top: Math.max(0, targetIndex * lineHeight - lineHeight * 2),
-                behavior: 'smooth'
-              });
+              textarea.scrollTop = scrollStart;
+
+              // 折り返しを含む実際の文字位置を測り、カーソル行が少し上寄りに見える位置まで移動する。
+              const targetTop = getTextareaScrollTopForPosition(charCount);
+              animateTextareaScroll(targetTop);
             }
           }, 240);
       }
@@ -848,7 +933,12 @@ export function initUI() {
       }
     };
     textarea.addEventListener('blur', onBlur);
-    registerUiCleanup(() => textarea.removeEventListener('blur', onBlur));
+    registerUiCleanup(() => {
+      textarea.removeEventListener('blur', onBlur);
+      if (shortcutScrollAnimationId !== null) {
+        window.cancelAnimationFrame(shortcutScrollAnimationId);
+      }
+    });
   }
 
   // editor の最初の行全体をドラッグハンドルとして使う。

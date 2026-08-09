@@ -290,6 +290,14 @@ rt {
   container-type: inline-size;
 }
 
+/* YouTube のミニプレイヤーでは、狭い映像領域を塞がないよう拡張機能の操作 UI を隠す。 */
+.html5-video-player.ytp-player-minimized #yl-ui,
+#movie_player.ytp-player-minimized #yl-ui {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* --- Glass Button --- */
 #yl-toggle-btn {
   position: absolute;
