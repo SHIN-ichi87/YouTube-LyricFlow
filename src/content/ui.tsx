@@ -1,8 +1,17 @@
 import { render } from 'preact';
 
-import { byId, state, type DropdownContainerElement, type DropdownOption, type OutsideClickBinding } from './state';
+import { byId, state, type DropdownContainerElement, type DropdownOption, type LayoutPreset, type OutsideClickBinding } from './state';
 import { DynamicIslandMarkup, EditorMarkup, ModeSelectorMarkup, SettingsModalMarkup } from './markup';
-import { applyVisualSettings, beginLayoutShift, updateBgModeButton, updateLinesBadge, updateSettingsModalUI } from './visuals';
+import {
+  LAYOUT_PRESETS,
+  applyVisualSettings,
+  beginLayoutShift,
+  markLayoutCustom,
+  updateBgModeButton,
+  updateLinesBadge,
+  updateQuickLayoutPadUI,
+  updateSettingsModalUI
+} from './visuals';
 import { adjustOffset, setupDragAndDrop, setupDraggable, setupInteractionEvents, setupKeyboardEvents, showToast, stampCurrentTime } from './interactions';
 import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updateTrackListUI } from './captions';
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
@@ -124,7 +133,15 @@ function createLyricsContainer() {
   dropZone.id = 'yl-drop-zone';
   dropZone.textContent = 'Drop LRC File Here';
 
-  container.append(plate, maskLayer, dropZone);
+  const layoutPreview = document.createElement('div');
+  layoutPreview.id = 'yl-layout-preview';
+  layoutPreview.setAttribute('aria-hidden', 'true');
+
+  const previewCurrentLine = document.createElement('span');
+  previewCurrentLine.className = 'yl-layout-preview-current';
+  layoutPreview.appendChild(previewCurrentLine);
+
+  container.append(plate, maskLayer, dropZone, layoutPreview);
   return container;
 }
 
@@ -189,6 +206,7 @@ export function toggleSettingsModal() {
       }
     }, 400);
   } else {
+    hideLayoutPreview();
     modal.style.overflow = 'hidden';
     if (state.settingsOverflowTimer) window.clearTimeout(state.settingsOverflowTimer);
 
@@ -497,6 +515,41 @@ function createDynamicIsland() {
   return island;
 }
 
+function applyLayoutPreset(preset: Exclude<LayoutPreset, 'custom'>) {
+  const definition = LAYOUT_PRESETS[preset];
+  state.userSettings.horizontalPos = definition.x;
+  state.userSettings.verticalPos = definition.y;
+  state.userSettings.textAlign = definition.textAlign;
+  state.userSettings.anchorY = definition.anchorY;
+  state.userSettings.layoutPreset = preset;
+  state.manualScrollOffset = 0;
+  state.isUserInteracting = false;
+
+  applyVisualSettings();
+  updateQuickLayoutPadUI();
+  saveSettings();
+}
+
+function showLayoutPreview(preset: Exclude<LayoutPreset, 'custom'>) {
+  const preview = byId<HTMLDivElement>('yl-layout-preview');
+  if (!preview) return;
+
+  const definition = LAYOUT_PRESETS[preset];
+  const translateX = definition.textAlign === 'left' ? '0%' : definition.textAlign === 'right' ? '-100%' : '-50%';
+  const translateY = definition.anchorY === 'top' ? '0%' : definition.anchorY === 'bottom' ? '-100%' : '-50%';
+
+  preview.style.left = `${definition.x}%`;
+  preview.style.top = `${definition.y}%`;
+  preview.style.transform = `translate(${translateX}, ${translateY})`;
+  preview.dataset.textAlign = definition.textAlign;
+  preview.dataset.anchorY = definition.anchorY;
+  preview.classList.add('visible');
+}
+
+function hideLayoutPreview() {
+  byId<HTMLDivElement>('yl-layout-preview')?.classList.remove('visible');
+}
+
 // 設定モーダルは各ボタンが state.userSettings を直接更新する基準版構成を踏襲する。
 function createSettingsModal(root: HTMLElement) {
   const modal = document.createElement('div');
@@ -590,29 +643,55 @@ function createSettingsModal(root: HTMLElement) {
 
   byId<HTMLButtonElement>('yl-reset-v-btn')!.onclick = () => {
     state.userSettings.verticalPos = 50;
-    const positionSlider = byId<HTMLInputElement>('yl-pos-slider');
-    if (positionSlider) positionSlider.value = '50';
+    markLayoutCustom();
     applyVisualSettings();
+    updateQuickLayoutPadUI();
     saveSettings();
     showToast('Vertical Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-reset-h-btn')!.onclick = () => {
     state.userSettings.horizontalPos = 50;
+    markLayoutCustom();
     applyVisualSettings();
+    updateQuickLayoutPadUI();
     saveSettings();
     showToast('Horizontal Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-reset-position-btn')!.onclick = () => {
-    state.userSettings.verticalPos = 50;
-    state.userSettings.horizontalPos = 50;
-    const positionSlider = byId<HTMLInputElement>('yl-pos-slider');
-    if (positionSlider) positionSlider.value = '50';
-    applyVisualSettings();
-    saveSettings();
-    showToast('Position Reset');
+    applyLayoutPreset('center');
+    showToast('Layout: Center');
   };
+
+  modal.querySelectorAll<HTMLButtonElement>('.yl-layout-pad-btn').forEach((button) => {
+    const preset = button.dataset.layout as Exclude<LayoutPreset, 'custom'>;
+    button.onclick = () => applyLayoutPreset(preset);
+    button.onmouseenter = () => showLayoutPreview(preset);
+    button.onmouseleave = hideLayoutPreview;
+    button.onfocus = () => showLayoutPreview(preset);
+    button.onblur = hideLayoutPreview;
+  });
+
+  const bindPositionSlider = (id: string, axis: 'x' | 'y') => {
+    const slider = byId<HTMLInputElement>(id);
+    if (!slider) return;
+
+    slider.oninput = () => {
+      const value = Number(slider.value);
+      if (axis === 'x') state.userSettings.horizontalPos = value;
+      else state.userSettings.verticalPos = value;
+
+      markLayoutCustom();
+      applyVisualSettings();
+      updateQuickLayoutPadUI();
+      saveSettings();
+    };
+  };
+
+  bindPositionSlider('yl-pos-x-slider', 'x');
+  bindPositionSlider('yl-pos-y-slider', 'y');
+  updateQuickLayoutPadUI();
 
   byId<HTMLButtonElement>('yl-close-all-btn')!.onclick = () => {
     // Close All は editor / settings / dropdown / mode menu を一度に閉じる最終退避操作。

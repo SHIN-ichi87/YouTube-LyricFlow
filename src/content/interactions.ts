@@ -1,6 +1,6 @@
 import { byId, state } from './state';
 import { formatTimeLRC } from './parsers';
-import { applyVisualSettings, clearMaskLayer } from './visuals';
+import { applyVisualSettings, clearMaskLayer, getLyricTransform, markLayoutCustom, updateQuickLayoutPadUI } from './visuals';
 
 // 画面上の一時通知は 1 つだけ表示し、後続メッセージでタイマーを上書きする。
 // 通知が連続でスタックして画面を見えなくしてしまうのを防ぎ、常に最新の状態だけを伝えるため。
@@ -237,6 +237,8 @@ export function setupInteractionEvents() {
 
   let dragStartX = 0;
   let dragStartPosX = 50;
+  let dragAreaWidth = window.innerWidth;
+  let dragAreaHeight = window.innerHeight;
 
   const onWheel = (event: WheelEvent) => {
     if (state.lyricsData.length === 0) return;
@@ -255,7 +257,7 @@ export function setupInteractionEvents() {
     }
 
     state.manualScrollOffset -= event.deltaY;
-    wrapper.style.transform = `translate(-50%, ${state.manualScrollOffset}px)`;
+    wrapper.style.transform = getLyricTransform(null, state.manualScrollOffset);
 
     resetInteractionTimer();
   };
@@ -272,6 +274,9 @@ export function setupInteractionEvents() {
     state.dragStartPos = parseFloat(String(state.userSettings.verticalPos));
     dragStartX = event.clientX;
     dragStartPosX = parseFloat(String(state.userSettings.horizontalPos || 50));
+    const layoutArea = byId<HTMLDivElement>('yl-container')?.getBoundingClientRect();
+    dragAreaWidth = layoutArea?.width || window.innerWidth;
+    dragAreaHeight = layoutArea?.height || window.innerHeight;
 
     wrapper.classList.add('is-interacting');
     wrapper.style.cursor = 'grabbing';
@@ -297,21 +302,20 @@ export function setupInteractionEvents() {
 
     if (state.hasMoved) {
       event.preventDefault();
+      markLayoutCustom();
 
-      let newPosY = state.dragStartPos + (deltaY / window.innerHeight) * 100;
-      let newPosX = dragStartPosX + (deltaX / window.innerWidth) * 100;
+      let newPosY = state.dragStartPos + (deltaY / dragAreaHeight) * 100;
+      let newPosX = dragStartPosX + (deltaX / dragAreaWidth) * 100;
 
-      newPosY = Math.max(10, Math.min(90, newPosY));
-      newPosX = Math.max(10, Math.min(90, newPosX));
+      newPosY = Math.max(5, Math.min(95, newPosY));
+      newPosX = Math.max(5, Math.min(95, newPosX));
 
       state.userSettings.verticalPos = newPosY;
       state.userSettings.horizontalPos = newPosX;
 
       // wrapper / plate / mask をまとめて動かすため、style 個別更新ではなく applyVisualSettings を使う。
       applyVisualSettings();
-
-      const positionSlider = byId<HTMLInputElement>('yl-pos-slider');
-      if (positionSlider) positionSlider.value = String(newPosY);
+      updateQuickLayoutPadUI();
     }
   };
 

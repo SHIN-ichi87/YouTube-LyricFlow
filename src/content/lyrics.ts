@@ -1,6 +1,6 @@
 import { byId, state, type RawSubtitleLine, type UserSettings } from './state';
 import { insertInstrumentalBreaks, parseLRC } from './parsers';
-import { applyVisualSettings } from './visuals';
+import { LAYOUT_PRESETS, applyVisualSettings } from './visuals';
 
 const RUBY_PATTERN = /([一-龠々〆ヵヶ]+)\(([ぁ-んァ-ン]+)\)/g;
 
@@ -202,11 +202,37 @@ export function loadSettings() {
       const stored = result.yl_user_settings;
       if (stored && typeof stored === 'object') {
         const { showPlate, ...storedSettings } = stored as Partial<UserSettings> & { showPlate?: boolean };
-        state.userSettings = {
+        const mergedSettings: UserSettings = {
           ...state.userSettings,
           ...storedSettings,
           bgMode: storedSettings.bgMode ?? (showPlate ? 'plate' : state.userSettings.bgMode)
         };
+
+        const storedPreset = storedSettings.layoutPreset;
+        const isKnownPreset = storedPreset === 'custom' || (typeof storedPreset === 'string' && storedPreset in LAYOUT_PRESETS);
+        if (!isKnownPreset) {
+          // 旧バージョンの任意座標は見た目を変えずに引き継ぎ、プリセット選択とは区別する。
+          mergedSettings.layoutPreset = 'custom';
+        }
+
+        const definition = mergedSettings.layoutPreset === 'custom' ? null : LAYOUT_PRESETS[mergedSettings.layoutPreset];
+        if (definition) {
+          // プリセット選択中の座標は定義値を正とし、旧版で保存された誤った中央値などを補正する。
+          mergedSettings.horizontalPos = definition.x;
+          mergedSettings.verticalPos = definition.y;
+        }
+        if (definition && storedSettings.textAlign === undefined) {
+          mergedSettings.textAlign = definition.textAlign;
+        } else if (!['left', 'center', 'right'].includes(mergedSettings.textAlign)) {
+          mergedSettings.textAlign = definition?.textAlign ?? 'center';
+        }
+        if (definition && storedSettings.anchorY === undefined) {
+          mergedSettings.anchorY = definition.anchorY;
+        } else if (!['top', 'center', 'bottom'].includes(mergedSettings.anchorY)) {
+          mergedSettings.anchorY = definition?.anchorY ?? 'center';
+        }
+
+        state.userSettings = mergedSettings;
       }
       resolve();
     });

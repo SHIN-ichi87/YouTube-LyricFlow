@@ -1,4 +1,4 @@
-import { byId, state } from './state';
+import { byId, state, type LayoutPreset, type LyricsAnchorY, type LyricsTextAlign } from './state';
 
 interface MaskStyles {
   maskImage: string;
@@ -11,6 +11,95 @@ let layoutShiftTimer: number | null = null;
 const NORMAL_LINE_MARGIN_EM = 0.42;
 const CURRENT_LINE_MARGIN_EM = 1.1;
 const CURRENT_LINE_SCALE = 1.15;
+
+export interface LayoutPresetDefinition {
+  x: number;
+  y: number;
+  textAlign: LyricsTextAlign;
+  anchorY: LyricsAnchorY;
+  label: string;
+}
+
+export const LAYOUT_PRESETS: Record<Exclude<LayoutPreset, 'custom'>, LayoutPresetDefinition> = {
+  'top-left': { x: 5, y: 8, textAlign: 'left', anchorY: 'top', label: 'Top Left' },
+  'top-center': { x: 50, y: 8, textAlign: 'center', anchorY: 'top', label: 'Top Center' },
+  'top-right': { x: 95, y: 8, textAlign: 'right', anchorY: 'top', label: 'Top Right' },
+  'middle-left': { x: 5, y: 50, textAlign: 'left', anchorY: 'center', label: 'Middle Left' },
+  center: { x: 50, y: 50, textAlign: 'center', anchorY: 'center', label: 'Center' },
+  'middle-right': { x: 95, y: 50, textAlign: 'right', anchorY: 'center', label: 'Middle Right' },
+  'bottom-left': { x: 5, y: 92, textAlign: 'left', anchorY: 'bottom', label: 'Bottom Left' },
+  'bottom-center': { x: 50, y: 92, textAlign: 'center', anchorY: 'bottom', label: 'Bottom Center' },
+  'bottom-right': { x: 95, y: 92, textAlign: 'right', anchorY: 'bottom', label: 'Bottom Right' }
+};
+
+function getHorizontalTranslate() {
+  if (state.userSettings.textAlign === 'left') return 0;
+  if (state.userSettings.textAlign === 'right') return -100;
+  return -50;
+}
+
+export function getLyricTransform(activeEl: HTMLElement | null = null, yOffset?: number) {
+  let verticalOffset = yOffset ?? 0;
+
+  if (activeEl && yOffset === undefined) {
+    if (state.userSettings.anchorY === 'top') {
+      verticalOffset = -activeEl.offsetTop;
+    } else if (state.userSettings.anchorY === 'bottom') {
+      verticalOffset = -(activeEl.offsetTop + activeEl.offsetHeight);
+    } else {
+      verticalOffset = -(activeEl.offsetTop + activeEl.offsetHeight / 2);
+    }
+  }
+
+  return `translate(${getHorizontalTranslate()}%, ${verticalOffset}px)`;
+}
+
+export function updateQuickLayoutPadUI() {
+  document.querySelectorAll<HTMLButtonElement>('.yl-layout-pad-btn').forEach((button) => {
+    const isSelected = button.dataset.layout === state.userSettings.layoutPreset;
+    button.classList.toggle('selected', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
+
+  const status = byId<HTMLSpanElement>('yl-layout-status');
+  if (status) {
+    status.innerText = state.userSettings.layoutPreset === 'custom'
+      ? 'Custom'
+      : LAYOUT_PRESETS[state.userSettings.layoutPreset].label;
+    status.classList.toggle('is-custom', state.userSettings.layoutPreset === 'custom');
+  }
+
+  const xSlider = byId<HTMLInputElement>('yl-pos-x-slider');
+  const ySlider = byId<HTMLInputElement>('yl-pos-y-slider');
+  const xValue = byId<HTMLOutputElement>('yl-pos-x-val');
+  const yValue = byId<HTMLOutputElement>('yl-pos-y-val');
+  if (xSlider) xSlider.value = String(Math.round(state.userSettings.horizontalPos));
+  if (ySlider) ySlider.value = String(Math.round(state.userSettings.verticalPos));
+  if (xValue) xValue.value = `${Math.round(state.userSettings.horizontalPos)}%`;
+  if (yValue) yValue.value = `${Math.round(state.userSettings.verticalPos)}%`;
+}
+
+export function markLayoutCustom() {
+  if (state.userSettings.layoutPreset === 'custom') return;
+  state.userSettings.layoutPreset = 'custom';
+  updateQuickLayoutPadUI();
+}
+
+export function positionPlateForActiveLine(plate: HTMLDivElement, activeEl: HTMLElement) {
+  const xOffset = state.userSettings.textAlign === 'left'
+    ? activeEl.offsetWidth / 2
+    : state.userSettings.textAlign === 'right'
+      ? -activeEl.offsetWidth / 2
+      : 0;
+  const yOffset = state.userSettings.anchorY === 'top'
+    ? activeEl.offsetHeight / 2
+    : state.userSettings.anchorY === 'bottom'
+      ? -activeEl.offsetHeight / 2
+      : 0;
+
+  plate.style.left = `calc(${state.userSettings.horizontalPos}% + ${xOffset}px)`;
+  plate.style.top = `calc(${state.userSettings.verticalPos}% + ${yOffset}px)`;
+}
 
 // オフセット表示は Dynamic Island 内の単一ラベルを更新するだけに絞る。
 // 高頻度で更新される数値のため、DOM全体の再レンダリングを回避してパフォーマンスの低下を抑えるため。
@@ -78,6 +167,7 @@ export function updateSettingsModalUI() {
 
   updateLinesBadge();
   updateBgModeButton();
+  updateQuickLayoutPadUI();
 }
 
 function getMaskStyles(): MaskStyles {
@@ -114,8 +204,15 @@ function getMaskStyles(): MaskStyles {
     fade = Math.min(12, Math.max(3, (normalLineHeight * 0.65 / containerHeight) * 100));
   }
 
-  const topStop = center - spread / 2;
-  const bottomStop = center + spread / 2;
+  let topStop = center - spread / 2;
+  let bottomStop = center + spread / 2;
+  if (state.userSettings.anchorY === 'top') {
+    topStop = center;
+    bottomStop = center + spread;
+  } else if (state.userSettings.anchorY === 'bottom') {
+    topStop = center - spread;
+    bottomStop = center;
+  }
   const gradient = `linear-gradient(to bottom,
     transparent ${Math.max(0, topStop - fade)}%,
     black ${Math.max(0, topStop)}%,
@@ -160,6 +257,14 @@ export function applyVisualSettings() {
     // 座標とタイポグラフィ系の CSS 変数は wrapper に集約し、各行へ継承させる。
     wrapper.style.top = `${state.userSettings.verticalPos}%`;
     wrapper.style.left = `${state.userSettings.horizontalPos}%`;
+    wrapper.style.alignItems = state.userSettings.textAlign === 'left'
+      ? 'flex-start'
+      : state.userSettings.textAlign === 'right'
+        ? 'flex-end'
+        : 'center';
+    wrapper.style.transform = getLyricTransform(wrapper.querySelector<HTMLElement>('.yl-line.current'));
+    wrapper.dataset.textAlign = state.userSettings.textAlign;
+    wrapper.dataset.anchorY = state.userSettings.anchorY;
     wrapper.style.setProperty('--yl-base-font-size', String(state.userSettings.fontSize));
 
     const lineHeightValue = Number(state.userSettings.lineHeight || 140) / 100;
@@ -184,6 +289,11 @@ export function applyVisualSettings() {
   if (container) {
     container.classList.toggle('cinematic-bg', state.userSettings.bgMode === 'cinematic');
   }
+
+  document.querySelectorAll<HTMLElement>('.yl-line').forEach((line) => {
+    line.style.textAlign = state.userSettings.textAlign;
+    line.style.transformOrigin = `${state.userSettings.textAlign} center`;
+  });
 
   if (plate) {
     if (state.userSettings.bgMode === 'plate') {

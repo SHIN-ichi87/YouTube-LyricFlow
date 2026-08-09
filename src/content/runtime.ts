@@ -1,7 +1,7 @@
 import { byId, state } from './state';
 import { bootNavigation } from './ui';
 import { spawnParticlesFromElement } from './interactions';
-import { applyMaskLayer, applyVisualSettings, beginLayoutShift, clearMaskLayer, updateIslandStatus } from './visuals';
+import { applyMaskLayer, applyVisualSettings, beginLayoutShift, clearMaskLayer, getLyricTransform, positionPlateForActiveLine, updateIslandStatus } from './visuals';
 
 const CONTROLS_SAFE_MARGIN_PX = 8;
 let trackedPlayer: HTMLDivElement | null = null;
@@ -202,6 +202,7 @@ function tickLyricsSync() {
         el.classList.remove('yl-dissolved');
       }
     });
+
   }
 
   const currentLineData = currentIndex !== -1 ? state.lyricsData[currentIndex] : null;
@@ -243,7 +244,7 @@ function tickLyricsSync() {
 
       // finished 中も current 行の位置まではきっちり中央へ合わせておく。
       if (activeEl) {
-        wrapper.style.transform = `translate(-50%, ${-(activeEl.offsetTop + activeEl.offsetHeight / 2)}px)`;
+        wrapper.style.transform = getLyricTransform(activeEl);
       }
     } else {
       wrapper.style.opacity = '1';
@@ -273,10 +274,11 @@ function tickLyricsSync() {
       }
 
       if (activeEl) {
-        wrapper.style.transform = `translate(-50%, ${-(activeEl.offsetTop + activeEl.offsetHeight / 2)}px)`;
+        wrapper.style.transform = getLyricTransform(activeEl);
 
         // プレートは現在行の実寸に追従させ、二言語行でも包み込む大きさを保つ。
         if (plate && state.userSettings.bgMode === 'plate') {
+          positionPlateForActiveLine(plate, activeEl);
           plate.style.width = `${activeEl.offsetWidth * 1.9 + 100}px`;
           plate.style.height = `${activeEl.offsetHeight * 2.5}px`;
         }
@@ -286,7 +288,7 @@ function tickLyricsSync() {
     // イントロなど current 行がない区間では、歌詞本体だけを消して待機状態に戻す。
     wrapper.classList.remove('finished');
     wrapper.style.opacity = '0';
-    wrapper.style.transform = 'translate(-50%, 0px)';
+    wrapper.style.transform = getLyricTransform();
     applyWrapperHitTesting(wrapper, false);
     if (plate) plate.style.opacity = '0';
   }

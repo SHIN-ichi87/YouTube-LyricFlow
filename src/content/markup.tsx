@@ -264,19 +264,61 @@ export function SettingsModalMarkup() {
           </div>
         </div>
 
-        <div class="yl-control-group">
+        <div class="yl-control-group yl-layout-control-group">
           <div class="yl-control-label">
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span>Position Reset</span>
-              <button id="yl-reset-position-btn" class="yl-reset-mini" title="Reset to Default">
+              <span>Quick Layout</span>
+              <button id="yl-reset-position-btn" class="yl-reset-mini" title="Reset to Center">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                   <path d="M3 3v5h5"></path>
                 </svg>
               </button>
             </div>
+            <span id="yl-layout-status" class="yl-layout-status">Center</span>
           </div>
-          <div class="yl-btn-row">
+          <div id="yl-layout-pad" class="yl-layout-pad" role="group" aria-label="Quick lyric layout">
+            <button class="yl-layout-pad-btn" data-layout="top-left" title="Top Left" aria-label="Top Left">
+              <svg viewBox="0 0 24 24"><path d="M6 18V6h12" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="top-center" title="Top Center" aria-label="Top Center">
+              <svg viewBox="0 0 24 24"><path d="M5 7h14" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="top-right" title="Top Right" aria-label="Top Right">
+              <svg viewBox="0 0 24 24"><path d="M6 6h12v12" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="middle-left" title="Middle Left" aria-label="Middle Left">
+              <svg viewBox="0 0 24 24"><path d="M7 5v14" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="center" title="Center" aria-label="Center">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="middle-right" title="Middle Right" aria-label="Middle Right">
+              <svg viewBox="0 0 24 24"><path d="M17 5v14" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="bottom-left" title="Bottom Left" aria-label="Bottom Left">
+              <svg viewBox="0 0 24 24"><path d="M6 6v12h12" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="bottom-center" title="Bottom Center — Cinema Subtitles" aria-label="Bottom Center">
+              <svg viewBox="0 0 24 24"><path d="M5 17h14" /></svg>
+            </button>
+            <button class="yl-layout-pad-btn" data-layout="bottom-right" title="Bottom Right" aria-label="Bottom Right">
+              <svg viewBox="0 0 24 24"><path d="M18 6v12H6" /></svg>
+            </button>
+          </div>
+          <div class="yl-position-fine-tune">
+            <label class="yl-position-slider-row" for="yl-pos-x-slider">
+              <span>X</span>
+              <input type="range" min="5" max="95" value="50" class="yl-slider" id="yl-pos-x-slider" />
+              <output id="yl-pos-x-val">50%</output>
+            </label>
+            <label class="yl-position-slider-row" for="yl-pos-y-slider">
+              <span>Y</span>
+              <input type="range" min="5" max="95" value="50" class="yl-slider" id="yl-pos-y-slider" />
+              <output id="yl-pos-y-val">50%</output>
+            </label>
+          </div>
+          <div class="yl-btn-row yl-position-reset-row">
             <button id="yl-reset-v-btn" class="yl-btn btn-secondary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14"></path>
@@ -290,6 +332,7 @@ export function SettingsModalMarkup() {
               Center Horizontal
             </button>
           </div>
+          <p class="yl-desc">Hover to preview. Drag lyrics or fine-tune to use a custom position.</p>
         </div>
 
         <div class="yl-control-group">

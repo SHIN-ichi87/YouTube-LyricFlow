@@ -93,6 +93,126 @@
   gap: 10px;
 }
 
+/* Quick Layout Pad */
+.yl-layout-control-group {
+  gap: 10px;
+}
+
+.yl-layout-control-group .yl-desc {
+  white-space: normal;
+}
+
+.yl-layout-status {
+  color: var(--yl-accent);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.yl-layout-status.is-custom {
+  color: var(--yl-text-secondary);
+}
+
+.yl-layout-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 2px 10px;
+}
+
+.yl-layout-pad-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: rgba(235, 235, 245, 0.5);
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.yl-layout-pad-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(10, 132, 255, 0.2), transparent 68%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.yl-layout-pad-btn svg {
+  position: relative;
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.yl-layout-pad-btn:hover {
+  color: var(--yl-accent);
+  background: transparent;
+}
+
+.yl-layout-pad-btn:active {
+  transform: scale(0.94);
+}
+
+.yl-layout-pad-btn.selected {
+  color: var(--yl-accent);
+  background: transparent;
+  box-shadow: none;
+}
+
+.yl-layout-pad-btn.selected::before {
+  opacity: 0.55;
+}
+
+.yl-layout-pad-btn:hover svg,
+.yl-layout-pad-btn.selected svg {
+  filter: drop-shadow(0 0 6px rgba(10, 132, 255, 0.85));
+}
+
+.yl-position-fine-tune {
+  display: grid;
+  gap: 8px;
+  padding: 2px 3px 0;
+}
+
+.yl-position-slider-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  color: var(--yl-text-secondary);
+  font: 10px/1 "JetBrains Mono", monospace;
+}
+
+.yl-position-slider-row .yl-slider {
+  width: 100%;
+}
+
+.yl-position-slider-row output {
+  color: rgba(255, 255, 255, 0.72);
+  text-align: right;
+}
+
+.yl-position-reset-row {
+  margin-top: 1px;
+}
+
 .btn-secondary {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.9);

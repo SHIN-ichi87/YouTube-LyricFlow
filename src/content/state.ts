@@ -12,12 +12,30 @@ export interface RawSubtitleLine {
   text: string;
 }
 
+export type LayoutPreset =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'middle-left'
+  | 'center'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right'
+  | 'custom';
+
+export type LyricsTextAlign = 'left' | 'center' | 'right';
+export type LyricsAnchorY = 'top' | 'center' | 'bottom';
+
 export interface UserSettings {
   isEnabled: boolean;
   isManuallyDisabled: boolean;
   fontSize: number | string;
   verticalPos: number;
   horizontalPos: number;
+  layoutPreset: LayoutPreset;
+  textAlign: LyricsTextAlign;
+  anchorY: LyricsAnchorY;
   visibleLines: number;
   lineHeight: number | string;
   primaryLang: string;
@@ -99,6 +117,9 @@ export const state = {
     fontSize: 28,
     verticalPos: 50,
     horizontalPos: 50,
+    layoutPreset: 'center',
+    textAlign: 'center',
+    anchorY: 'center',
     visibleLines: 3,
     lineHeight: 140,
     primaryLang: 'auto',
