@@ -118,15 +118,15 @@ export function updateBgModeButton() {
   const status = byId<HTMLSpanElement>('yl-plate-status');
 
   if (state.userSettings.bgMode === 'cinematic') {
-    if (status) status.innerText = 'BG: Cinematic';
+    if (status) status.innerText = 'Cinematic';
     plateToggle.style.background = 'rgba(175, 82, 222, 0.3)';
     plateToggle.style.color = '#fff';
   } else if (state.userSettings.bgMode === 'plate') {
-    if (status) status.innerText = 'BG: Plate';
+    if (status) status.innerText = 'Plate';
     plateToggle.style.background = 'rgba(10, 132, 255, 0.3)';
     plateToggle.style.color = '#fff';
   } else {
-    if (status) status.innerText = 'BG: Off';
+    if (status) status.innerText = 'Background: Off';
     plateToggle.style.background = '';
     plateToggle.style.color = '';
   }

@@ -257,8 +257,8 @@ export function SettingsModalMarkup() {
           </div>
           <div class="yl-control-row" style={{ justifyContent: 'space-between' }}>
             <div id="yl-font-custom-wrapper" style={{ width: '48%' }}></div>
-            <button id="yl-plate-toggle" class="yl-btn btn-secondary" style={{ width: '48%', padding: '6px' }}>
-              <span id="yl-plate-status">BG: Off</span>
+            <button id="yl-plate-toggle" class="yl-btn btn-secondary" style={{ width: '48%'}}>
+              <span id="yl-plate-status">Background: Off</span>
             </button>
           </div>
         </div>
@@ -306,22 +306,15 @@ export function SettingsModalMarkup() {
           </div>
           <div class="yl-btn-row yl-position-reset-row">
             <button id="yl-reset-v-btn" class="yl-btn btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M5 12h14"></path>
-                <path d="M12 3v5"></path>
-                <path d="M9.5 6 12 8.5 14.5 6"></path>
-                <path d="M12 21v-5"></path>
-                <path d="M9.5 18 12 15.5 14.5 18"></path>
               </svg>
               Center Vertical
             </button>
+              
             <button id="yl-reset-h-btn" class="yl-btn btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14"></path>
-                <path d="M3 12h5"></path>
-                <path d="M6 9.5 8.5 12 6 14.5"></path>
-                <path d="M21 12h-5"></path>
-                <path d="M18 9.5 15.5 12 18 14.5"></path>
               </svg>
               Center Horizontal
             </button>

@@ -16,7 +16,7 @@ import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updat
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const LAYOUT_MORPH_DURATION_MS = 520;
+const LAYOUT_MORPH_DURATION_MS = 450;
 let layoutMorphGeneration = 0;
 let layoutMorphTimer: number | null = null;
 let layoutMorphFrame: number | null = null;
@@ -759,7 +759,7 @@ function createSettingsModal(root: HTMLElement) {
     updateBgModeButton();
     applyVisualSettings();
     saveSettings();
-    showToast('Appearance Reset');
+    //showToast('Appearance Reset');
   };
 
   byId<HTMLButtonElement>('yl-close-settings-btn')!.onclick = toggleSettingsModal;
@@ -782,7 +782,7 @@ function createSettingsModal(root: HTMLElement) {
       anchorY: state.userSettings.anchorY,
       layoutPreset: 'custom'
     });
-    showToast('Vertical Position Reset');
+    //showToast('Vertical Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-reset-h-btn')!.onclick = () => {
@@ -793,12 +793,12 @@ function createSettingsModal(root: HTMLElement) {
       anchorY: state.userSettings.anchorY,
       layoutPreset: 'custom'
     });
-    showToast('Horizontal Position Reset');
+    //showToast('Horizontal Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-reset-position-btn')!.onclick = () => {
     applyLayoutPreset('center');
-    showToast('Layout: Center');
+    //showToast('Layout: Center');
   };
 
   modal.querySelectorAll<HTMLButtonElement>('.yl-layout-pad-btn').forEach((button) => {

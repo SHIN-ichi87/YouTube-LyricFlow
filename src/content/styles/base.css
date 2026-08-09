@@ -598,7 +598,7 @@ rt {
 
 #yl-container.yl-layout-morph-animating #yl-scroll-wrapper,
 #yl-container.yl-layout-morph-animating .yl-line.yl-layout-morph-visible {
-  transition: translate 520ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: translate 450ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* 移動途中に旧/新マスクが歌詞を横切らないよう、必要行だけを一時的に直接表示する。 */
