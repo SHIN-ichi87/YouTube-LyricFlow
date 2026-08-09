@@ -307,8 +307,8 @@ export function setupInteractionEvents() {
       let newPosY = state.dragStartPos + (deltaY / dragAreaHeight) * 100;
       let newPosX = dragStartPosX + (deltaX / dragAreaWidth) * 100;
 
-      newPosY = Math.max(5, Math.min(95, newPosY));
-      newPosX = Math.max(5, Math.min(95, newPosX));
+      newPosY = Math.max(3, Math.min(97, newPosY));
+      newPosX = Math.max(3, Math.min(97, newPosX));
 
       state.userSettings.verticalPos = newPosY;
       state.userSettings.horizontalPos = newPosX;

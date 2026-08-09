@@ -160,8 +160,6 @@
   /* 物理挙動のような滑らかなスクロール */
   transition:
     transform 0.6s var(--yl-ease-elastic),
-    top 0.6s var(--yl-ease-elastic),
-    left 0.6s var(--yl-ease-elastic),
     opacity 0.6s ease;
   will-change: transform, opacity;
   display: flex;
@@ -292,7 +290,7 @@
 
   /* 非アクティブ行の演出 */
   /* current 行とのコントラストを出すため、普段は少し縮小・ぼかし・減光しておく。 */
-  filter: blur(2px);
+  filter: blur(1.7px);
   transform: scale(0.95) translateZ(0);
   transform-origin: center center;
   transition:
@@ -590,6 +588,32 @@ rt {
 #yl-container.yl-layout-shifting .yl-line,
 #yl-container.yl-layout-shifting #yl-bg-plate {
    transition: none !important;
+}
+
+/* プリセット移行は target レイアウトを先に確定し、FLIP の画面座標差分だけで移動させる。 */
+#yl-container.yl-layout-morph-preparing #yl-scroll-wrapper,
+#yl-container.yl-layout-morph-preparing #yl-bg-plate {
+  transition: none !important;
+}
+
+#yl-container.yl-layout-morph-animating #yl-scroll-wrapper,
+#yl-container.yl-layout-morph-animating .yl-line.yl-layout-morph-visible {
+  transition: translate 520ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 移動途中に旧/新マスクが歌詞を横切らないよう、必要行だけを一時的に直接表示する。 */
+#yl-container.yl-layout-morphing #yl-mask-layer {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  clip-path: none !important;
+}
+
+#yl-container.yl-layout-morphing .yl-line:not(.yl-layout-morph-visible) {
+  opacity: 0 !important;
+}
+
+#yl-container.yl-layout-morphing #yl-bg-plate {
+  opacity: 0 !important;
 }
 
 /* --- Disable Default Focus Rings --- */

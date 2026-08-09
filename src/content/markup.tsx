@@ -241,7 +241,6 @@ export function SettingsModalMarkup() {
             <input type="range" min="1" max="10" value="3" class="yl-slider" id="yl-lines-slider" style={{ flex: 1, margin: '0 10px' }} />
             <span class="yl-sub-label">Wide</span>
           </div>
-          <p class="yl-desc">Limits the visual field to focus on current lyrics.</p>
         </div>
 
         <div class="yl-control-group">
@@ -275,7 +274,6 @@ export function SettingsModalMarkup() {
                 </svg>
               </button>
             </div>
-            <span id="yl-layout-status" class="yl-layout-status">Center</span>
           </div>
           <div id="yl-layout-pad" class="yl-layout-pad" role="group" aria-label="Quick lyric layout">
             <button class="yl-layout-pad-btn" data-layout="top-left" title="Top Left" aria-label="Top Left">
@@ -306,33 +304,28 @@ export function SettingsModalMarkup() {
               <svg viewBox="0 0 24 24"><path d="M18 6v12H6" /></svg>
             </button>
           </div>
-          <div class="yl-position-fine-tune">
-            <label class="yl-position-slider-row" for="yl-pos-x-slider">
-              <span>X</span>
-              <input type="range" min="5" max="95" value="50" class="yl-slider" id="yl-pos-x-slider" />
-              <output id="yl-pos-x-val">50%</output>
-            </label>
-            <label class="yl-position-slider-row" for="yl-pos-y-slider">
-              <span>Y</span>
-              <input type="range" min="5" max="95" value="50" class="yl-slider" id="yl-pos-y-slider" />
-              <output id="yl-pos-y-val">50%</output>
-            </label>
-          </div>
           <div class="yl-btn-row yl-position-reset-row">
             <button id="yl-reset-v-btn" class="yl-btn btn-secondary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14"></path>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="M12 3v5"></path>
+                <path d="M9.5 6 12 8.5 14.5 6"></path>
+                <path d="M12 21v-5"></path>
+                <path d="M9.5 18 12 15.5 14.5 18"></path>
               </svg>
               Center Vertical
             </button>
             <button id="yl-reset-h-btn" class="yl-btn btn-secondary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14"></path>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14"></path>
+                <path d="M3 12h5"></path>
+                <path d="M6 9.5 8.5 12 6 14.5"></path>
+                <path d="M21 12h-5"></path>
+                <path d="M18 9.5 15.5 12 18 14.5"></path>
               </svg>
               Center Horizontal
             </button>
           </div>
-          <p class="yl-desc">Hover to preview. Drag lyrics or fine-tune to use a custom position.</p>
         </div>
 
         <div class="yl-control-group">

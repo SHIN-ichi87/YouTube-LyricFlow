@@ -21,15 +21,15 @@ export interface LayoutPresetDefinition {
 }
 
 export const LAYOUT_PRESETS: Record<Exclude<LayoutPreset, 'custom'>, LayoutPresetDefinition> = {
-  'top-left': { x: 5, y: 8, textAlign: 'left', anchorY: 'top', label: 'Top Left' },
+  'top-left': { x: 3, y: 8, textAlign: 'left', anchorY: 'top', label: 'Top Left' },
   'top-center': { x: 50, y: 8, textAlign: 'center', anchorY: 'top', label: 'Top Center' },
-  'top-right': { x: 95, y: 8, textAlign: 'right', anchorY: 'top', label: 'Top Right' },
-  'middle-left': { x: 5, y: 50, textAlign: 'left', anchorY: 'center', label: 'Middle Left' },
+  'top-right': { x: 97, y: 8, textAlign: 'right', anchorY: 'top', label: 'Top Right' },
+  'middle-left': { x: 3, y: 50, textAlign: 'left', anchorY: 'center', label: 'Middle Left' },
   center: { x: 50, y: 50, textAlign: 'center', anchorY: 'center', label: 'Center' },
-  'middle-right': { x: 95, y: 50, textAlign: 'right', anchorY: 'center', label: 'Middle Right' },
-  'bottom-left': { x: 5, y: 92, textAlign: 'left', anchorY: 'bottom', label: 'Bottom Left' },
+  'middle-right': { x: 97, y: 50, textAlign: 'right', anchorY: 'center', label: 'Middle Right' },
+  'bottom-left': { x: 3, y: 92, textAlign: 'left', anchorY: 'bottom', label: 'Bottom Left' },
   'bottom-center': { x: 50, y: 92, textAlign: 'center', anchorY: 'bottom', label: 'Bottom Center' },
-  'bottom-right': { x: 95, y: 92, textAlign: 'right', anchorY: 'bottom', label: 'Bottom Right' }
+  'bottom-right': { x: 97, y: 92, textAlign: 'right', anchorY: 'bottom', label: 'Bottom Right' }
 };
 
 function getHorizontalTranslate() {
@@ -61,22 +61,6 @@ export function updateQuickLayoutPadUI() {
     button.setAttribute('aria-pressed', String(isSelected));
   });
 
-  const status = byId<HTMLSpanElement>('yl-layout-status');
-  if (status) {
-    status.innerText = state.userSettings.layoutPreset === 'custom'
-      ? 'Custom'
-      : LAYOUT_PRESETS[state.userSettings.layoutPreset].label;
-    status.classList.toggle('is-custom', state.userSettings.layoutPreset === 'custom');
-  }
-
-  const xSlider = byId<HTMLInputElement>('yl-pos-x-slider');
-  const ySlider = byId<HTMLInputElement>('yl-pos-y-slider');
-  const xValue = byId<HTMLOutputElement>('yl-pos-x-val');
-  const yValue = byId<HTMLOutputElement>('yl-pos-y-val');
-  if (xSlider) xSlider.value = String(Math.round(state.userSettings.horizontalPos));
-  if (ySlider) ySlider.value = String(Math.round(state.userSettings.verticalPos));
-  if (xValue) xValue.value = `${Math.round(state.userSettings.horizontalPos)}%`;
-  if (yValue) yValue.value = `${Math.round(state.userSettings.verticalPos)}%`;
 }
 
 export function markLayoutCustom() {

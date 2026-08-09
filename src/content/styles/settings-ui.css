@@ -95,32 +95,18 @@
 
 /* Quick Layout Pad */
 .yl-layout-control-group {
-  gap: 10px;
+  gap: 7px;
 }
 
 .yl-layout-control-group .yl-desc {
   white-space: normal;
 }
 
-.yl-layout-status {
-  color: var(--yl-accent);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-.yl-layout-status.is-custom {
-  color: var(--yl-text-secondary);
-}
-
 .yl-layout-pad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 2px 10px;
+  gap: 1px 4px;
+  padding: 0 10px;
 }
 
 .yl-layout-pad-btn {
@@ -128,14 +114,14 @@
   display: grid;
   place-items: center;
   min-width: 0;
-  height: 32px;
+  height: 20px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   color: rgba(235, 235, 245, 0.5);
   background: transparent;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
   transition:
     color 0.2s ease,
     transform 0.15s ease;
@@ -144,8 +130,13 @@
 .yl-layout-pad-btn::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgba(10, 132, 255, 0.2), transparent 68%);
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 132, 255, 0.18), transparent 66%);
+  transform: translate(-50%, -50%);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -177,36 +168,12 @@
 }
 
 .yl-layout-pad-btn.selected::before {
-  opacity: 0.55;
+  opacity: 0.38;
 }
 
 .yl-layout-pad-btn:hover svg,
 .yl-layout-pad-btn.selected svg {
-  filter: drop-shadow(0 0 6px rgba(10, 132, 255, 0.85));
-}
-
-.yl-position-fine-tune {
-  display: grid;
-  gap: 8px;
-  padding: 2px 3px 0;
-}
-
-.yl-position-slider-row {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) 34px;
-  align-items: center;
-  gap: 8px;
-  color: var(--yl-text-secondary);
-  font: 10px/1 "JetBrains Mono", monospace;
-}
-
-.yl-position-slider-row .yl-slider {
-  width: 100%;
-}
-
-.yl-position-slider-row output {
-  color: rgba(255, 255, 255, 0.72);
-  text-align: right;
+  filter: drop-shadow(0 0 3px rgba(10, 132, 255, 0.7));
 }
 
 .yl-position-reset-row {

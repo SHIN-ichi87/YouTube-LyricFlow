@@ -6,7 +6,6 @@ import {
   LAYOUT_PRESETS,
   applyVisualSettings,
   beginLayoutShift,
-  markLayoutCustom,
   updateBgModeButton,
   updateLinesBadge,
   updateQuickLayoutPadUI,
@@ -17,6 +16,26 @@ import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updat
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const LAYOUT_MORPH_DURATION_MS = 520;
+let layoutMorphGeneration = 0;
+let layoutMorphTimer: number | null = null;
+let layoutMorphFrame: number | null = null;
+
+function cancelQuickLayoutMorph() {
+  layoutMorphGeneration += 1;
+  if (layoutMorphTimer !== null) window.clearTimeout(layoutMorphTimer);
+  if (layoutMorphFrame !== null) window.cancelAnimationFrame(layoutMorphFrame);
+  layoutMorphTimer = null;
+  layoutMorphFrame = null;
+
+  const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
+  if (wrapper) wrapper.style.translate = '';
+  byId<HTMLDivElement>('yl-container')?.classList.remove('yl-layout-morphing', 'yl-layout-morph-preparing', 'yl-layout-morph-animating');
+  document.querySelectorAll<HTMLElement>('.yl-line').forEach((line) => {
+    line.style.translate = '';
+    line.classList.remove('yl-layout-morph-visible');
+  });
+}
 
 function runUiCleanup() {
   // すでに実行済みのクリーンアップ関数を再度呼ばないよう、配列を空にしつつ取得する。
@@ -515,19 +534,133 @@ function createDynamicIsland() {
   return island;
 }
 
-function applyLayoutPreset(preset: Exclude<LayoutPreset, 'custom'>) {
-  const definition = LAYOUT_PRESETS[preset];
-  state.userSettings.horizontalPos = definition.x;
-  state.userSettings.verticalPos = definition.y;
-  state.userSettings.textAlign = definition.textAlign;
-  state.userSettings.anchorY = definition.anchorY;
-  state.userSettings.layoutPreset = preset;
+interface LayoutTransitionTarget {
+  horizontalPos: number;
+  verticalPos: number;
+  textAlign: typeof state.userSettings.textAlign;
+  anchorY: typeof state.userSettings.anchorY;
+  layoutPreset: LayoutPreset;
+}
+
+function applyLayoutTransition(target: LayoutTransitionTarget) {
+  const container = byId<HTMLDivElement>('yl-container');
+  const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
+  const lines = wrapper ? Array.from(wrapper.querySelectorAll<HTMLElement>('.yl-line')) : [];
+  const activeLine = wrapper?.querySelector<HTMLElement>('.yl-line.current') || null;
+  const oldAnchor = state.userSettings.anchorY;
+  const shouldAnimate = Boolean(
+    container &&
+    wrapper &&
+    activeLine &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  const oldLineRects = shouldAnimate
+    ? new Map(lines.map((line) => [line, line.getBoundingClientRect()]))
+    : null;
+
+  cancelQuickLayoutMorph();
+  const generation = layoutMorphGeneration;
+
+  if (container && shouldAnimate) {
+    container.classList.add('yl-layout-morphing', 'yl-layout-morph-preparing');
+
+    const activeIndex = lines.indexOf(activeLine!);
+    const visibleCount = state.userSettings.visibleLines >= 15
+      ? lines.length
+      : Math.max(1, Math.min(lines.length, state.userSettings.visibleLines));
+    const collectVisibleIndexes = (anchor: typeof state.userSettings.anchorY) => {
+      if (anchor === 'top') {
+        return Array.from({ length: visibleCount }, (_, offset) => activeIndex + offset);
+      }
+      if (anchor === 'bottom') {
+        return Array.from({ length: visibleCount }, (_, offset) => activeIndex - offset);
+      }
+
+      const before = Math.floor((visibleCount - 1) / 2);
+      return Array.from({ length: visibleCount }, (_, offset) => activeIndex - before + offset);
+    };
+
+    const visibleIndexes = new Set([
+      ...collectVisibleIndexes(oldAnchor),
+      ...collectVisibleIndexes(target.anchorY)
+    ]);
+    visibleIndexes.forEach((index) => lines[index]?.classList.add('yl-layout-morph-visible'));
+  }
+
+  state.userSettings.horizontalPos = target.horizontalPos;
+  state.userSettings.verticalPos = target.verticalPos;
+  state.userSettings.textAlign = target.textAlign;
+  state.userSettings.anchorY = target.anchorY;
+  state.userSettings.layoutPreset = target.layoutPreset;
   state.manualScrollOffset = 0;
   state.isUserInteracting = false;
 
   applyVisualSettings();
   updateQuickLayoutPadUI();
   saveSettings();
+
+  if (!container || !wrapper || !activeLine || !oldLineRects || !shouldAnimate) return;
+
+  // target 側のレイアウトをトランジションなしで確定してから、画面座標の差分だけを FLIP で補間する。
+  const targetActiveRect = activeLine.getBoundingClientRect();
+  const targetLineRects = new Map(lines.map((line) => [line, line.getBoundingClientRect()]));
+  const oldActiveRect = oldLineRects.get(activeLine);
+  container.classList.remove('yl-layout-morph-preparing');
+  if (!oldActiveRect) {
+    container.classList.remove('yl-layout-morphing');
+    return;
+  }
+
+  const globalX = oldActiveRect.left + oldActiveRect.width / 2 - (targetActiveRect.left + targetActiveRect.width / 2);
+  const globalY = oldActiveRect.top + oldActiveRect.height / 2 - (targetActiveRect.top + targetActiveRect.height / 2);
+  wrapper.style.translate = `${globalX}px ${globalY}px`;
+
+  lines.forEach((line) => {
+    if (!line.classList.contains('yl-layout-morph-visible')) return;
+    const oldRect = oldLineRects.get(line);
+    if (!oldRect) return;
+    const targetRect = targetLineRects.get(line);
+    if (!targetRect) return;
+    const localX = oldRect.left - targetRect.left - globalX;
+    const localY = oldRect.top - targetRect.top - globalY;
+    if (Math.abs(localX) < 0.5 && Math.abs(localY) < 0.5) return;
+
+    line.style.translate = `${localX}px ${localY}px`;
+  });
+
+  // 初期差分を一度描画へ確定し、次フレームから 0 へ戻すことで CSS transition を開始する。
+  void wrapper.offsetWidth;
+  container.classList.add('yl-layout-morph-animating');
+  layoutMorphFrame = window.requestAnimationFrame(() => {
+    if (generation !== layoutMorphGeneration) return;
+    wrapper.style.translate = '0px 0px';
+    lines.forEach((line) => {
+      if (line.classList.contains('yl-layout-morph-visible')) line.style.translate = '0px 0px';
+    });
+
+    layoutMorphTimer = window.setTimeout(() => {
+      if (generation !== layoutMorphGeneration) return;
+      wrapper.style.translate = '';
+      container.classList.remove('yl-layout-morphing', 'yl-layout-morph-preparing', 'yl-layout-morph-animating');
+      lines.forEach((line) => {
+        line.style.translate = '';
+        line.classList.remove('yl-layout-morph-visible');
+      });
+      layoutMorphTimer = null;
+      layoutMorphFrame = null;
+    }, LAYOUT_MORPH_DURATION_MS + 40);
+  });
+}
+
+function applyLayoutPreset(preset: Exclude<LayoutPreset, 'custom'>) {
+  const definition = LAYOUT_PRESETS[preset];
+  applyLayoutTransition({
+    horizontalPos: definition.x,
+    verticalPos: definition.y,
+    textAlign: definition.textAlign,
+    anchorY: definition.anchorY,
+    layoutPreset: preset
+  });
 }
 
 function showLayoutPreview(preset: Exclude<LayoutPreset, 'custom'>) {
@@ -642,20 +775,24 @@ function createSettingsModal(root: HTMLElement) {
   };
 
   byId<HTMLButtonElement>('yl-reset-v-btn')!.onclick = () => {
-    state.userSettings.verticalPos = 50;
-    markLayoutCustom();
-    applyVisualSettings();
-    updateQuickLayoutPadUI();
-    saveSettings();
+    applyLayoutTransition({
+      horizontalPos: state.userSettings.horizontalPos,
+      verticalPos: 50,
+      textAlign: state.userSettings.textAlign,
+      anchorY: state.userSettings.anchorY,
+      layoutPreset: 'custom'
+    });
     showToast('Vertical Position Reset');
   };
 
   byId<HTMLButtonElement>('yl-reset-h-btn')!.onclick = () => {
-    state.userSettings.horizontalPos = 50;
-    markLayoutCustom();
-    applyVisualSettings();
-    updateQuickLayoutPadUI();
-    saveSettings();
+    applyLayoutTransition({
+      horizontalPos: 50,
+      verticalPos: state.userSettings.verticalPos,
+      textAlign: state.userSettings.textAlign,
+      anchorY: state.userSettings.anchorY,
+      layoutPreset: 'custom'
+    });
     showToast('Horizontal Position Reset');
   };
 
@@ -673,24 +810,6 @@ function createSettingsModal(root: HTMLElement) {
     button.onblur = hideLayoutPreview;
   });
 
-  const bindPositionSlider = (id: string, axis: 'x' | 'y') => {
-    const slider = byId<HTMLInputElement>(id);
-    if (!slider) return;
-
-    slider.oninput = () => {
-      const value = Number(slider.value);
-      if (axis === 'x') state.userSettings.horizontalPos = value;
-      else state.userSettings.verticalPos = value;
-
-      markLayoutCustom();
-      applyVisualSettings();
-      updateQuickLayoutPadUI();
-      saveSettings();
-    };
-  };
-
-  bindPositionSlider('yl-pos-x-slider', 'x');
-  bindPositionSlider('yl-pos-y-slider', 'y');
   updateQuickLayoutPadUI();
 
   byId<HTMLButtonElement>('yl-close-all-btn')!.onclick = () => {
