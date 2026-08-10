@@ -1,0 +1,26 @@
+/* 音声ビジュアライザーは歌詞より後方に置き、YouTube本体の操作を一切奪わない。 */
+#yl-container.visual-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+#yl-visual-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+#yl-visual-layer.active {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #yl-visual-layer {
+    transition: none;
+  }
+}

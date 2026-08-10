@@ -26,6 +26,7 @@ export type LayoutPreset =
 
 export type LyricsTextAlign = 'left' | 'center' | 'right';
 export type LyricsAnchorY = 'top' | 'center' | 'bottom';
+export type VisualMode = 'normal' | 'mirror-spectrum';
 
 export interface UserSettings {
   isEnabled: boolean;
@@ -42,6 +43,7 @@ export interface UserSettings {
   secondaryLang: string;
   fontFamily: 'standard' | 'serif' | 'antique' | 'rounded' | 'hachi' | 'dot' | 'rampart' | 'kurenaido';
   bgMode: 'none' | 'plate' | 'cinematic';
+  visualMode: VisualMode;
 }
 
 export interface CaptionTrack {
@@ -125,7 +127,8 @@ export const state = {
     primaryLang: 'auto',
     secondaryLang: 'ja',
     fontFamily: 'serif',
-    bgMode: 'none'
+    bgMode: 'none',
+    visualMode: 'normal'
   } as UserSettings,
   // 補助 UI の遅延処理や、動画ごとのカテゴリ判定キャッシュ。
   settingsOverflowTimer: null as number | null,

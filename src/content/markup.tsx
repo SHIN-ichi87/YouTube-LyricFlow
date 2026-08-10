@@ -55,8 +55,7 @@ export function DynamicIslandMarkup() {
   );
 }
 
-// モード選択肢はまだダミー表示だが、DOM 構造は基準版と一致させておく。
-// 後日「カラオケモード」などの新機能を単体追加する際、CSSやアニメーションのレイアウト調整を最小限で済ませるための足場。
+// モードの実処理は VisualizerManager 側へ分離し、ここは選択肢の宣言だけを担当する。
 export function ModeSelectorMarkup() {
   return (
     <>
@@ -76,17 +75,13 @@ export function ModeSelectorMarkup() {
           </svg>
         </div>
       </div>
-      {/* 実機能は未接続だが、展開レイアウトと選択状態の DOM は先に揃えておく。 */}
       <div class="yl-mode-dropdown">
         <div class="yl-mode-dropdown-inner">
           <div class="yl-mode-option selected" data-mode="normal">
             Normal Mode
           </div>
-          <div class="yl-mode-option" data-mode="karaoke">
-            under development
-          </div>
-          <div class="yl-mode-option" data-mode="focus">
-            under development
+          <div class="yl-mode-option" data-mode="mirror-spectrum">
+            Mirror Spectrum
           </div>
         </div>
       </div>

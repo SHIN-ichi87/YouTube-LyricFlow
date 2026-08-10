@@ -1,5 +1,6 @@
 import { byId, state } from './state';
 import { bootNavigation } from './ui';
+import { refreshVisualizerAudioSource } from './audio-visualizer';
 import { spawnParticlesFromElement } from './interactions';
 import { applyMaskLayer, applyVisualSettings, beginLayoutShift, clearMaskLayer, getLyricTransform, positionPlateForActiveLine, updateIslandStatus } from './visuals';
 
@@ -317,6 +318,7 @@ export function bootstrapContentScript() {
     state.controlsSafeTop = null;
     state.controlsSafeAreaDirty = true;
     state.lastWrapperPointerEvents = null;
+    refreshVisualizerAudioSource();
 
     const wrapper = byId<HTMLDivElement>('yl-scroll-wrapper');
     if (wrapper) wrapper.replaceChildren();

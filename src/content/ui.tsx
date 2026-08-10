@@ -1,6 +1,6 @@
 import { render } from 'preact';
 
-import { byId, state, type DropdownContainerElement, type DropdownOption, type LayoutPreset, type OutsideClickBinding } from './state';
+import { byId, state, type DropdownContainerElement, type DropdownOption, type LayoutPreset, type OutsideClickBinding, type VisualMode } from './state';
 import { DynamicIslandMarkup, EditorMarkup, ModeSelectorMarkup, SettingsModalMarkup } from './markup';
 import {
   LAYOUT_PRESETS,
@@ -14,12 +14,30 @@ import {
 import { adjustOffset, setupDragAndDrop, setupDraggable, setupInteractionEvents, setupKeyboardEvents, showToast, stampCurrentTime } from './interactions';
 import { checkIsMusicVideo, startTimedTextObserver, tryAutoImportCaptions, updateTrackListUI } from './captions';
 import { cleanUpStorage, downloadLRC, loadLyricsFromStorage, loadSettings, loadLyricsFromText, saveLyricsToStorage, saveSettings } from './lyrics';
+import { stopVisualizer, syncVisualizerMode } from './audio-visualizer';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const LAYOUT_MORPH_DURATION_MS = 450;
 let layoutMorphGeneration = 0;
 let layoutMorphTimer: number | null = null;
 let layoutMorphFrame: number | null = null;
+
+const VISUAL_MODE_LABELS: Record<VisualMode, string> = {
+  normal: 'Normal Mode',
+  'mirror-spectrum': 'Mirror Spectrum'
+};
+
+function updateVisualModeUI() {
+  const selectedMode = state.userSettings.visualMode;
+  const label = byId<HTMLSpanElement>('yl-mode-label');
+  if (label) label.innerText = VISUAL_MODE_LABELS[selectedMode];
+
+  document.querySelectorAll<HTMLDivElement>('.yl-mode-option').forEach((option) => {
+    const isSelected = option.dataset.mode === selectedMode;
+    option.classList.toggle('selected', isSelected);
+    option.setAttribute('aria-selected', String(isSelected));
+  });
+}
 
 function cancelQuickLayoutMorph() {
   layoutMorphGeneration += 1;
@@ -323,6 +341,8 @@ export function setAppPower(isOn: boolean, isManualAction: boolean = false) {
 
     //showToast('Lyrics Studio: Off');
   }
+
+  syncVisualizerMode();
 }
 
 // ネイティブ select の代わりに、基準版どおりのアニメ付きドロップダウンを組み立てる。
@@ -872,6 +892,7 @@ export function initUI() {
   if (!needsRebuild) return;
 
   runUiCleanup();
+  stopVisualizer();
   existingContainer?.remove();
   existingUiRoot?.remove();
 
@@ -964,17 +985,18 @@ export function initUI() {
     option.onclick = (event) => {
       event.stopPropagation();
 
-      // 現時点では実機能切り替えは無く、見た目の selected / label だけを同期する。
-      modeSelector.querySelectorAll('.yl-mode-option').forEach((item) => item.classList.remove('selected'));
-      option.classList.add('selected');
+      const selectedMode = option.dataset.mode;
+      if (selectedMode !== 'normal' && selectedMode !== 'mirror-spectrum') return;
 
       const topControlsEl = byId<HTMLDivElement>('yl-top-controls');
       const firstRects = topControlsEl
         ? new Map(Array.from(topControlsEl.children).map((element) => [element, element.getBoundingClientRect()]))
         : null;
 
-      const label = byId<HTMLSpanElement>('yl-mode-label');
-      if (label) label.innerText = option.innerText;
+      state.userSettings.visualMode = selectedMode;
+      saveSettings();
+      updateVisualModeUI();
+      syncVisualizerMode();
 
       if (firstRects) animateTopControlsLayout(firstRects);
 
@@ -1232,6 +1254,7 @@ export function initUI() {
     setAppPower(state.userSettings.isEnabled);
     applyVisualSettings();
     updateSettingsModalUI();
+    updateVisualModeUI();
     void updateTrackListUI();
   });
 }
