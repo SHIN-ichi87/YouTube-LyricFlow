@@ -231,7 +231,7 @@ export function loadSettings() {
         } else if (!['top', 'center', 'bottom'].includes(mergedSettings.anchorY)) {
           mergedSettings.anchorY = definition?.anchorY ?? 'center';
         }
-        if (!['normal', 'mirror-spectrum'].includes(mergedSettings.visualMode)) {
+        if (!['normal', 'mirror-spectrum', 'orbit-spectrum'].includes(mergedSettings.visualMode)) {
           mergedSettings.visualMode = 'normal';
         }
 

@@ -24,7 +24,8 @@ let layoutMorphFrame: number | null = null;
 
 const VISUAL_MODE_LABELS: Record<VisualMode, string> = {
   normal: 'Normal Mode',
-  'mirror-spectrum': 'Mirror Spectrum'
+  'mirror-spectrum': 'Mirror Spectrum',
+  'orbit-spectrum': 'Orbit Spectrum'
 };
 
 function updateVisualModeUI() {
@@ -986,7 +987,11 @@ export function initUI() {
       event.stopPropagation();
 
       const selectedMode = option.dataset.mode;
-      if (selectedMode !== 'normal' && selectedMode !== 'mirror-spectrum') return;
+      if (
+        selectedMode !== 'normal' &&
+        selectedMode !== 'mirror-spectrum' &&
+        selectedMode !== 'orbit-spectrum'
+      ) return;
 
       const topControlsEl = byId<HTMLDivElement>('yl-top-controls');
       const firstRects = topControlsEl

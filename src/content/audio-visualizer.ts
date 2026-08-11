@@ -12,6 +12,10 @@ const BAR_COUNT_PER_SIDE = 24;
 const SOURCE_RETRY_INTERVAL_MS = 1000;
 const NO_SIGNAL_NOTICE_MS = 4000;
 const MAX_DEVICE_PIXEL_RATIO = 2;
+const ORBIT_SPECTRUM_POINT_COUNT = 92;
+const ORBIT_MESH_LAYER_COUNT = 16;
+const ORBIT_TARGET_FRAME_INTERVAL_MS = 1000 / 30;
+const ORBIT_MAX_DEVICE_PIXEL_RATIO = 1.25;
 
 // Mirror Spectrum の位置とサイズはここだけを触れば調整できる。
 // ratio はCanvas全体に対する割合。横幅はプレイヤー端まで使い、下端から上へ伸ばす。
@@ -23,6 +27,17 @@ const MIRROR_SPECTRUM_LAYOUT = {
   horizontalInsetPx: 0,
   maxHeightRatio: 0.34,
   maxHeightPx: 280
+} as const;
+
+// Orbit Spectrum は映像の右側へ収め、歌詞の主表示領域をなるべく塞がない。
+// 半径は縦横両方から制限し、通常表示・シアター・全画面のいずれでも欠けないようにする。
+const ORBIT_SPECTRUM_LAYOUT = {
+  centerXRatio: 0.75,
+  centerYRatio: 0.47,
+  maxRadiusHeightRatio: 0.38,
+  maxRadiusWidthRatio: 0.225,
+  maxRadiusPx: 280,
+  edgePaddingRatio: 1.1
 } as const;
 
 const MIN_ANALYZED_FREQUENCY_HZ = 45;
@@ -76,7 +91,7 @@ function createOnsetDetector(
   };
 }
 
-class MirrorSpectrumVisualizer {
+class AudioSpectrumVisualizer {
   // Canvasまわりの参照。
   private canvas: HTMLCanvasElement | null = null;
   private context: CanvasRenderingContext2D | null = null;
@@ -101,6 +116,18 @@ class MirrorSpectrumVisualizer {
   private displayedBars = new Float32Array(BAR_COUNT_PER_SIDE);
   private trailBars = new Float32Array(BAR_COUNT_PER_SIDE);
   private trailOpacity = new Float32Array(BAR_COUNT_PER_SIDE);
+
+  // Orbitは直近の輪郭を内側へ送ることで、少ないPathでも密度のある面を作る。
+  private orbitProfile = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitTargetProfile = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitContourX = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitContourY = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitHistory = Array.from(
+    { length: ORBIT_MESH_LAYER_COUNT },
+    () => new Float32Array(ORBIT_SPECTRUM_POINT_COUNT)
+  );
+  private orbitHistoryCursor = 0;
+  private orbitHistoryCount = 0;
 
   // 各周波数帯の現在値と、前フレームからの変化量。
   private bandEnergy = new Float32Array(BAR_COUNT_PER_SIDE);
@@ -135,6 +162,7 @@ class MirrorSpectrumVisualizer {
   private hasLoudnessSample = false;
   private active = false;
   private lastSampleAt = 0;
+  private lastOrbitFrameAt = 0;
   private lastSourceAttempt = 0;
   private lastSignalAt = 0;
   private audioStatus: 'connecting' | 'ready' | 'silent' | 'unsupported' = 'connecting';
@@ -143,6 +171,8 @@ class MirrorSpectrumVisualizer {
   start() {
     if (this.active) {
       this.ensureLayer();
+      // Mirror と Orbit では解像度上限が異なるため、モード切替時にも再計測する。
+      this.resizeCanvas();
       return;
     }
 
@@ -179,6 +209,11 @@ class MirrorSpectrumVisualizer {
     this.displayedBars.fill(0);
     this.trailBars.fill(0);
     this.trailOpacity.fill(0);
+    this.orbitProfile.fill(0);
+    this.orbitTargetProfile.fill(0);
+    this.orbitHistory.forEach((profile) => profile.fill(0));
+    this.orbitHistoryCursor = 0;
+    this.orbitHistoryCount = 0;
     this.bandEnergy.fill(0);
     this.bandFlux.fill(0);
     this.bandDrop.fill(0);
@@ -201,6 +236,7 @@ class MirrorSpectrumVisualizer {
     this.climaxBurstExpansion = 0;
     this.climaxThresholdLatched = false;
     this.lastSampleAt = 0;
+    this.lastOrbitFrameAt = 0;
     this.hasLoudnessSample = false;
   }
 
@@ -241,7 +277,7 @@ class MirrorSpectrumVisualizer {
   private resizeCanvas() {
     if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
+    const pixelRatio = this.getRenderPixelRatio();
     const width = Math.max(1, Math.round(rect.width * pixelRatio));
     const height = Math.max(1, Math.round(rect.height * pixelRatio));
 
@@ -249,6 +285,13 @@ class MirrorSpectrumVisualizer {
       this.canvas.width = width;
       this.canvas.height = height;
     }
+  }
+
+  private getRenderPixelRatio() {
+    const maximum = state.userSettings.visualMode === 'orbit-spectrum'
+      ? ORBIT_MAX_DEVICE_PIXEL_RATIO
+      : MAX_DEVICE_PIXEL_RATIO;
+    return Math.min(window.devicePixelRatio || 1, maximum);
   }
 
   // 再接続前に古いStreamとNodeを閉じる。
@@ -361,7 +404,7 @@ class MirrorSpectrumVisualizer {
       this.lastSignalAt = performance.now();
       this.audioStatus = 'ready';
     } catch (error) {
-      console.warn('[LyricFlow] Mirror Spectrum could not capture YouTube audio.', error);
+      console.warn('[LyricFlow] Audio visualizer could not capture YouTube audio.', error);
       this.audioStatus = 'unsupported';
       this.disconnectAudioSource();
     }
@@ -761,7 +804,7 @@ class MirrorSpectrumVisualizer {
   }
 
   // 解析済みの値を左右対称のSpectrumとしてCanvasへ描く。
-  private draw(width: number, height: number, now: number) {
+  private drawMirrorSpectrum(width: number, height: number, now: number) {
     const context = this.context;
     const canvas = this.canvas;
     if (!context || !canvas) return;
@@ -953,6 +996,221 @@ class MirrorSpectrumVisualizer {
     }
   }
 
+  // 音の輪郭履歴を内側へ流し、円のままでも奥行きのあるNCS風メッシュを描く。
+  private drawOrbitSpectrum(width: number, height: number, now: number) {
+    const context = this.context;
+    const canvas = this.canvas;
+    if (!context || !canvas) return;
+
+    const pixelRatio = this.getRenderPixelRatio();
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
+    const radius = Math.max(
+      54,
+      Math.min(
+        height * ORBIT_SPECTRUM_LAYOUT.maxRadiusHeightRatio,
+        width * ORBIT_SPECTRUM_LAYOUT.maxRadiusWidthRatio,
+        ORBIT_SPECTRUM_LAYOUT.maxRadiusPx
+      )
+    );
+    const centerX = Math.max(
+      radius * 1.15,
+      Math.min(
+        width * ORBIT_SPECTRUM_LAYOUT.centerXRatio,
+        width - radius * ORBIT_SPECTRUM_LAYOUT.edgePaddingRatio
+      )
+    );
+    const centerY = Math.max(
+      radius * 1.18,
+      Math.min(height * ORBIT_SPECTRUM_LAYOUT.centerYRatio, height - radius * 1.18)
+    );
+
+    let bassEnergy = 0;
+    for (let index = 0; index < this.displayedBars.length; index += 1) {
+      if (index < 5) bassEnergy += this.displayedBars[index];
+    }
+    bassEnergy /= 5;
+
+    const macroGlow = Math.pow(this.macroEnergy, 1.05);
+    const circlePulse =
+      1 + bassEnergy * 0.035 + this.kickVisualPulse * 0.045 + this.climaxBurst * 0.03;
+    const renderedRadius = radius * circlePulse;
+
+    // 周波数帯と波形を一周へ展開する。隣接点も混ぜ、ギザギザではなく大きな塊で動かす。
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const position = pointIndex / ORBIT_SPECTRUM_POINT_COUNT;
+      const bandPosition = position * (BAR_COUNT_PER_SIDE - 1);
+      const bandIndex = Math.floor(bandPosition);
+      const bandMix = bandPosition - bandIndex;
+      const band =
+        this.displayedBars[bandIndex] * (1 - bandMix) +
+        this.displayedBars[Math.min(BAR_COUNT_PER_SIDE - 1, bandIndex + 1)] * bandMix;
+      const waveformIndex = Math.min(
+        this.timeDomainData.length - 1,
+        Math.floor(position * this.timeDomainData.length)
+      );
+      const waveform = this.timeDomainData[waveformIndex] || 0;
+      this.orbitTargetProfile[pointIndex] =
+        Math.pow(Math.min(1, band * 1.45), 0.62) * 0.64 +
+        Math.abs(waveform) * 0.22 +
+        waveform * 0.11;
+    }
+
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const previous = this.orbitTargetProfile[
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 1) % ORBIT_SPECTRUM_POINT_COUNT
+      ];
+      const current = this.orbitTargetProfile[pointIndex];
+      const next = this.orbitTargetProfile[(pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT];
+      const target = previous * 0.23 + current * 0.54 + next * 0.23;
+      const easing = target > this.orbitProfile[pointIndex] ? 0.48 : 0.18;
+      this.orbitProfile[pointIndex] += (target - this.orbitProfile[pointIndex]) * easing;
+    }
+
+    this.orbitHistoryCursor =
+      (this.orbitHistoryCursor + ORBIT_MESH_LAYER_COUNT - 1) % ORBIT_MESH_LAYER_COUNT;
+    this.orbitHistory[this.orbitHistoryCursor].set(this.orbitProfile);
+    this.orbitHistoryCount = Math.min(ORBIT_MESH_LAYER_COUNT, this.orbitHistoryCount + 1);
+
+    // 広い白青Glowを一度だけ敷き、暗い映像でも輪郭と点が埋もれないようにする。
+    const ambientGlow = context.createRadialGradient(
+      centerX,
+      centerY,
+      renderedRadius * 0.38,
+      centerX,
+      centerY,
+      renderedRadius * 1.48
+    );
+    ambientGlow.addColorStop(0, `rgba(150, 214, 255, ${0.018 + macroGlow * 0.035})`);
+    ambientGlow.addColorStop(0.62, `rgba(115, 181, 255, ${0.025 + macroGlow * 0.045})`);
+    ambientGlow.addColorStop(0.82, `rgba(240, 248, 255, ${0.04 + macroGlow * 0.07})`);
+    ambientGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    context.fillStyle = ambientGlow;
+    context.fillRect(
+      centerX - renderedRadius * 1.7,
+      centerY - renderedRadius * 1.7,
+      renderedRadius * 3.4,
+      renderedRadius * 3.4
+    );
+
+    const rotation = now * 0.000035;
+    const historyLayers = Math.max(1, this.orbitHistoryCount);
+
+    // 各リングは1点ずつ描画せず、4つのPathへまとめる（最大1472点・4fill）。
+    context.save();
+    context.globalCompositeOperation = 'lighter';
+    context.shadowBlur = 0;
+    for (let depthGroup = 0; depthGroup < 4; depthGroup += 1) {
+      context.beginPath();
+      for (let meshLayer = depthGroup; meshLayer < historyLayers; meshLayer += 4) {
+        const layerRatio = meshLayer / Math.max(1, ORBIT_MESH_LAYER_COUNT - 1);
+        const historyIndex =
+          (this.orbitHistoryCursor + meshLayer) % ORBIT_MESH_LAYER_COUNT;
+        const profile = this.orbitHistory[historyIndex];
+        const angleOffset = rotation - layerRatio * (0.24 + macroGlow * 0.1);
+        const baseRadiusRatio = 0.975 - layerRatio * 0.42;
+        for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+          const angle =
+            (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 +
+            angleOffset;
+          const energyShape = Math.max(0, profile[pointIndex]);
+          const flow = Math.sin(angle * 2.4 - now * 0.0012 + meshLayer * 0.32);
+          const pointRadius = renderedRadius * Math.max(
+            0.42,
+            baseRadiusRatio + energyShape * (0.34 - layerRatio * 0.055) +
+              flow * energyShape * 0.018
+          );
+          const x = centerX + Math.cos(angle) * pointRadius;
+          const y = centerY + Math.sin(angle) * pointRadius;
+          const pointSize = 0.72 + (1 - layerRatio) * 0.78 + energyShape * 0.58;
+
+          context.rect(x - pointSize / 2, y - pointSize / 2, pointSize, pointSize);
+        }
+      }
+      context.fillStyle = `rgba(${210 + depthGroup * 12}, ${232 + depthGroup * 6}, 255, ${
+        0.46 + depthGroup * 0.09 + macroGlow * 0.1
+      })`;
+      context.fill();
+    }
+    context.restore();
+
+    // 最新輪郭を滑らかな二次曲線に変換し、NCSの太い白い外周を作る。
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const angle = (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 + rotation;
+      const contourRadius = renderedRadius * (
+        0.99 + this.orbitProfile[pointIndex] * 0.38 +
+        this.kickVisualPulse * 0.025
+      );
+      this.orbitContourX[pointIndex] = centerX + Math.cos(angle) * contourRadius;
+      this.orbitContourY[pointIndex] = centerY + Math.sin(angle) * contourRadius;
+    }
+
+    context.save();
+    context.globalCompositeOperation = 'lighter';
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    context.beginPath();
+    const lastIndex = ORBIT_SPECTRUM_POINT_COUNT - 1;
+    context.moveTo(
+      (this.orbitContourX[lastIndex] + this.orbitContourX[0]) / 2,
+      (this.orbitContourY[lastIndex] + this.orbitContourY[0]) / 2
+    );
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const nextIndex = (pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT;
+      context.quadraticCurveTo(
+        this.orbitContourX[pointIndex],
+        this.orbitContourY[pointIndex],
+        (this.orbitContourX[pointIndex] + this.orbitContourX[nextIndex]) / 2,
+        (this.orbitContourY[pointIndex] + this.orbitContourY[nextIndex]) / 2
+      );
+    }
+    context.closePath();
+    context.strokeStyle = `rgba(246, 251, 255, ${0.76 + macroGlow * 0.2})`;
+    context.lineWidth = 3.6 + macroGlow * 3.2 + this.snareVisualPulse * 1.3;
+    context.shadowColor = `rgba(178, 224, 255, ${0.66 + macroGlow * 0.22})`;
+    context.shadowBlur = 10 + macroGlow * 12;
+    context.stroke();
+
+    // 強い帯域だけ線幅を足し、大音量時に輪郭が局所的に大きく膨らむようにする。
+    context.shadowBlur = 5 + macroGlow * 7;
+    for (let tier = 0; tier < 3; tier += 1) {
+      context.beginPath();
+      const threshold = 0.18 + tier * 0.16;
+      for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+        if (this.orbitProfile[pointIndex] < threshold) continue;
+        const nextIndex = (pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT;
+        context.moveTo(this.orbitContourX[pointIndex], this.orbitContourY[pointIndex]);
+        context.lineTo(this.orbitContourX[nextIndex], this.orbitContourY[nextIndex]);
+      }
+      context.strokeStyle = `rgba(255, 255, 255, ${0.34 + tier * 0.14})`;
+      context.lineWidth = 4.8 + tier * 2.8 + this.kickVisualPulse * 2;
+      context.stroke();
+    }
+    context.restore();
+
+    if (this.audioStatus !== 'ready') {
+      const message = this.audioStatus === 'unsupported'
+        ? 'Audio capture is unavailable'
+        : this.audioStatus === 'silent'
+          ? 'No analyzable audio signal'
+          : 'Waiting for YouTube audio…';
+      context.font = '500 12px system-ui, sans-serif';
+      context.textAlign = 'center';
+      context.fillStyle = 'rgba(255, 255, 255, 0.66)';
+      context.fillText(message, centerX, Math.min(height - 18, centerY + renderedRadius + 32));
+    }
+
+    if (this.audioStatus === 'connecting') {
+      const waitingRadius = renderedRadius * (1.02 + Math.sin(now / 360) * 0.018);
+      context.strokeStyle = 'rgba(105, 194, 255, 0.32)';
+      context.lineWidth = 1;
+      context.beginPath();
+      context.arc(centerX, centerY, waitingRadius, -0.55, 0.55);
+      context.stroke();
+    }
+  }
+
   // 接続確認、解析、描画を毎フレーム順番に実行する。
   private render = (now: number) => {
     if (!this.active) return;
@@ -968,29 +1226,42 @@ class MirrorSpectrumVisualizer {
       void this.ensureAudioSource();
     }
 
+    const isOrbitMode = state.userSettings.visualMode === 'orbit-spectrum';
+    if (isOrbitMode && now - this.lastOrbitFrameAt < ORBIT_TARGET_FRAME_INTERVAL_MS) return;
+    if (isOrbitMode) this.lastOrbitFrameAt = now;
+
     this.sampleBars(now);
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
-    this.draw(this.canvas.width / pixelRatio, this.canvas.height / pixelRatio, now);
+    const pixelRatio = this.getRenderPixelRatio();
+    const width = this.canvas.width / pixelRatio;
+    const height = this.canvas.height / pixelRatio;
+    if (isOrbitMode) {
+      this.drawOrbitSpectrum(width, height, now);
+    } else {
+      this.drawMirrorSpectrum(width, height, now);
+    }
   };
 }
 
-const mirrorSpectrum = new MirrorSpectrumVisualizer();
+const audioSpectrum = new AudioSpectrumVisualizer();
 
 // 設定中のVisual Modeに合わせてVisualizerをON/OFFする。
 export function syncVisualizerMode() {
-  if (state.userSettings.isEnabled && state.userSettings.visualMode === 'mirror-spectrum') {
-    mirrorSpectrum.start();
+  const isSpectrumMode =
+    state.userSettings.visualMode === 'mirror-spectrum' ||
+    state.userSettings.visualMode === 'orbit-spectrum';
+  if (state.userSettings.isEnabled && isSpectrumMode) {
+    audioSpectrum.start();
   } else {
-    mirrorSpectrum.stop();
+    audioSpectrum.stop();
   }
 }
 
 // SPA遷移や動画変更後に新しい音声Trackを取り直す。
 export function refreshVisualizerAudioSource() {
-  mirrorSpectrum.refreshSource();
+  audioSpectrum.refreshSource();
 }
 
 // 拡張機能の終了時に音声とCanvasを確実に片付ける。
 export function stopVisualizer() {
-  mirrorSpectrum.stop();
+  audioSpectrum.stop();
 }

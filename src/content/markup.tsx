@@ -83,6 +83,9 @@ export function ModeSelectorMarkup() {
           <div class="yl-mode-option" data-mode="mirror-spectrum">
             Mirror Spectrum
           </div>
+          <div class="yl-mode-option" data-mode="orbit-spectrum">
+            Orbit Spectrum
+          </div>
         </div>
       </div>
     </>

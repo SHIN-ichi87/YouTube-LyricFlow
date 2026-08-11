@@ -26,7 +26,7 @@ export type LayoutPreset =
 
 export type LyricsTextAlign = 'left' | 'center' | 'right';
 export type LyricsAnchorY = 'top' | 'center' | 'bottom';
-export type VisualMode = 'normal' | 'mirror-spectrum';
+export type VisualMode = 'normal' | 'mirror-spectrum' | 'orbit-spectrum';
 
 export interface UserSettings {
   isEnabled: boolean;
