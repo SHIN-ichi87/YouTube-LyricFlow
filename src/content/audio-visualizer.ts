@@ -12,8 +12,9 @@ const BAR_COUNT_PER_SIDE = 24;
 const SOURCE_RETRY_INTERVAL_MS = 1000;
 const NO_SIGNAL_NOTICE_MS = 4000;
 const MAX_DEVICE_PIXEL_RATIO = 2;
-const ORBIT_SPECTRUM_POINT_COUNT = 92;
-const ORBIT_MESH_LAYER_COUNT = 16;
+const ORBIT_SPECTRUM_POINT_COUNT = 128;
+const ORBIT_MESH_LAYER_COUNT = 24;
+const ORBIT_MESH_GRID_SIZE = 58;
 const ORBIT_TARGET_FRAME_INTERVAL_MS = 1000 / 30;
 const ORBIT_MAX_DEVICE_PIXEL_RATIO = 1.25;
 
@@ -64,6 +65,15 @@ function getTimeAdjustedEasing(easingAt60Hz: number, frameScale: number) {
   return 1 - Math.pow(1 - easingAt60Hz, frameScale);
 }
 
+function createOrbitParticleSeeds(count: number) {
+  const seeds = new Float32Array(count);
+  for (let index = 0; index < count; index += 1) {
+    const hashed = Math.sin((index + 1) * 12.9898) * 43758.5453;
+    seeds[index] = hashed - Math.floor(hashed);
+  }
+  return seeds;
+}
+
 interface OnsetDetectorState {
   previousEnergy: number;
   averageFlux: number;
@@ -102,6 +112,7 @@ class AudioSpectrumVisualizer {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private transientAnalyser: AnalyserNode | null = null;
+  private analysisSink: GainNode | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private capturedStream: MediaStream | null = null;
   private connectedVideo: CapturableVideoElement | null = null;
@@ -120,14 +131,79 @@ class AudioSpectrumVisualizer {
   // Orbitは直近の輪郭を内側へ送ることで、少ないPathでも密度のある面を作る。
   private orbitProfile = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
   private orbitTargetProfile = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitSurfaceProfile = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
   private orbitContourX = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
   private orbitContourY = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitRibbonOuterX = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitRibbonOuterY = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitRibbonInnerX = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
+  private orbitRibbonInnerY = new Float32Array(ORBIT_SPECTRUM_POINT_COUNT);
   private orbitHistory = Array.from(
     { length: ORBIT_MESH_LAYER_COUNT },
     () => new Float32Array(ORBIT_SPECTRUM_POINT_COUNT)
   );
   private orbitHistoryCursor = 0;
   private orbitHistoryCount = 0;
+  private orbitMeshX = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshY = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshEchoX = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshEchoY = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshDepth = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshCrest = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshVisibility = new Float32Array(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitMeshSeed = createOrbitParticleSeeds(
+    ORBIT_MESH_GRID_SIZE * ORBIT_MESH_GRID_SIZE
+  );
+  private orbitFlowPhase = 0;
+  private orbitBassPhase = 0;
+  private orbitHighPhase = 0;
+  private orbitFlowEnergy = 0;
+  private orbitFlowBass = 0;
+  private orbitFlowMid = 0;
+  private orbitFlowHigh = 0;
+  private orbitFlowAccent = 0;
+  private orbitMeshPresence = 0;
+  private orbitOverlapStrength = 0;
+  private orbitFlowDirection = 0;
+  private orbitFlowDirectionTarget = 0;
+  private orbitSecondaryDirection = Math.PI * 0.34;
+  private orbitSecondaryDirectionTarget = Math.PI * 0.34;
+  private orbitDirectionStep = 0;
+  private orbitLastKickPulse = 0;
+  private orbitLastSnarePulse = 0;
+  private orbitKickSweepProgress = 2;
+  private orbitKickSweepStrength = 0;
+  private orbitKickSweepDirection = 0;
+  private orbitSnareSweepProgress = 2;
+  private orbitSnareSweepStrength = 0;
+  private orbitSnareSweepDirection = Math.PI * 0.5;
+  private orbitKickCompressionProgress = 2;
+  private orbitKickCompressionStrength = 0;
+  private orbitBassBreathPhase = 0;
+  private orbitMelodyRipplePhase = 0;
+  private orbitMelodySourceAngle = -Math.PI * 0.18;
+  private orbitHatFlashStep = 0;
+  private orbitLastHatPulse = 0;
+  private orbitRareScatterProgress = 2;
+  private orbitRareScatterStrength = 0;
+  private orbitRareCollapseProgress = 2;
+  private orbitRareCollapseStrength = 0;
+  private orbitPeakMemory = 0;
+  private lastOrbitMotionAt = 0;
 
   // 各周波数帯の現在値と、前フレームからの変化量。
   private bandEnergy = new Float32Array(BAR_COUNT_PER_SIDE);
@@ -211,9 +287,47 @@ class AudioSpectrumVisualizer {
     this.trailOpacity.fill(0);
     this.orbitProfile.fill(0);
     this.orbitTargetProfile.fill(0);
+    this.orbitSurfaceProfile.fill(0);
+    this.orbitMeshVisibility.fill(0);
     this.orbitHistory.forEach((profile) => profile.fill(0));
     this.orbitHistoryCursor = 0;
     this.orbitHistoryCount = 0;
+    this.orbitFlowPhase = 0;
+    this.orbitBassPhase = 0;
+    this.orbitHighPhase = 0;
+    this.orbitFlowEnergy = 0;
+    this.orbitFlowBass = 0;
+    this.orbitFlowMid = 0;
+    this.orbitFlowHigh = 0;
+    this.orbitFlowAccent = 0;
+    this.orbitMeshPresence = 0;
+    this.orbitOverlapStrength = 0;
+    this.orbitFlowDirection = 0;
+    this.orbitFlowDirectionTarget = 0;
+    this.orbitSecondaryDirection = Math.PI * 0.34;
+    this.orbitSecondaryDirectionTarget = Math.PI * 0.34;
+    this.orbitDirectionStep = 0;
+    this.orbitLastKickPulse = 0;
+    this.orbitLastSnarePulse = 0;
+    this.orbitKickSweepProgress = 2;
+    this.orbitKickSweepStrength = 0;
+    this.orbitKickSweepDirection = 0;
+    this.orbitSnareSweepProgress = 2;
+    this.orbitSnareSweepStrength = 0;
+    this.orbitSnareSweepDirection = Math.PI * 0.5;
+    this.orbitKickCompressionProgress = 2;
+    this.orbitKickCompressionStrength = 0;
+    this.orbitBassBreathPhase = 0;
+    this.orbitMelodyRipplePhase = 0;
+    this.orbitMelodySourceAngle = -Math.PI * 0.18;
+    this.orbitHatFlashStep = 0;
+    this.orbitLastHatPulse = 0;
+    this.orbitRareScatterProgress = 2;
+    this.orbitRareScatterStrength = 0;
+    this.orbitRareCollapseProgress = 2;
+    this.orbitRareCollapseStrength = 0;
+    this.orbitPeakMemory = 0;
+    this.lastOrbitMotionAt = 0;
     this.bandEnergy.fill(0);
     this.bandFlux.fill(0);
     this.bandDrop.fill(0);
@@ -297,9 +411,13 @@ class AudioSpectrumVisualizer {
   // 再接続前に古いStreamとNodeを閉じる。
   private disconnectAudioSource() {
     this.sourceNode?.disconnect();
+    this.analyser?.disconnect();
+    this.transientAnalyser?.disconnect();
+    this.analysisSink?.disconnect();
     this.sourceNode = null;
     this.analyser = null;
     this.transientAnalyser = null;
+    this.analysisSink = null;
     this.capturedStream?.getTracks().forEach((track) => track.stop());
     this.capturedStream = null;
     this.connectedVideo = null;
@@ -381,9 +499,18 @@ class AudioSpectrumVisualizer {
       sourceNode.connect(analyser);
       sourceNode.connect(transientAnalyser);
 
+      // 出力へ到達しないWeb AudioグラフはChromeが処理を省略する場合がある。
+      // 無音Gainを終端へつなぎ、動画音声を二重再生せず解析ノードだけ確実に駆動する。
+      const analysisSink = audioContext.createGain();
+      analysisSink.gain.value = 0;
+      analyser.connect(analysisSink);
+      transientAnalyser.connect(analysisSink);
+      analysisSink.connect(audioContext.destination);
+
       this.sourceNode = sourceNode;
       this.analyser = analyser;
       this.transientAnalyser = transientAnalyser;
+      this.analysisSink = analysisSink;
       this.frequencyData = new Uint8Array(analyser.frequencyBinCount);
       this.transientFrequencyData = new Uint8Array(transientAnalyser.frequencyBinCount);
       this.timeDomainData = new Float32Array(analyser.fftSize);
@@ -399,6 +526,12 @@ class AudioSpectrumVisualizer {
       this.climaxBurst = 0;
       this.climaxBurstExpansion = 0;
       this.climaxThresholdLatched = false;
+      this.orbitKickSweepProgress = 2;
+      this.orbitKickSweepStrength = 0;
+      this.orbitKickSweepDirection = 0;
+      this.orbitSnareSweepProgress = 2;
+      this.orbitSnareSweepStrength = 0;
+      this.orbitSnareSweepDirection = Math.PI * 0.5;
       this.lastSampleAt = 0;
       this.hasLoudnessSample = false;
       this.lastSignalAt = performance.now();
@@ -557,6 +690,12 @@ class AudioSpectrumVisualizer {
 
     // 大音量だけ、または音数が多いだけではクライマックスにしない。両方が揃った時だけU字を出す。
     const combinedEnergy = macroEnergy * this.arrangementDensity;
+    const previousPeakMemory = this.orbitPeakMemory;
+    // 数秒前までの盛り上がりを記憶し、大きく静まった瞬間をDrop前候補として扱う。
+    this.orbitPeakMemory = Math.max(
+      combinedEnergy,
+      this.orbitPeakMemory * Math.pow(0.9992, frameScale)
+    );
     const climaxProgress = Math.min(1, Math.max(0, (combinedEnergy - 0.16) / 0.46));
     const smoothClimax = climaxProgress * climaxProgress * (3 - 2 * climaxProgress);
     const climaxEasing = getTimeAdjustedEasing(
@@ -570,12 +709,45 @@ class AudioSpectrumVisualizer {
       this.climaxBurst = 1;
       this.climaxBurstExpansion = 0;
       this.climaxThresholdLatched = true;
+      // サビ／Drop突入時だけ外周粒子を飛散させる。
+      // 固定秒数では制限せず、直前のレアイベントが完了した時点で再発火可能にする。
+      if (
+        this.orbitRareScatterProgress >= 1 &&
+        this.orbitRareCollapseProgress >= 1
+      ) {
+        this.orbitRareScatterProgress = 0;
+        this.orbitRareScatterStrength = Math.min(
+          1.12,
+          0.84 + this.climaxEnergy * 0.22 + this.arrangementDensity * 0.14
+        );
+      }
       showToast('DEBUG: サビ突入・高さ +150%');
     } else {
       this.climaxBurst *= Math.pow(0.97, frameScale);
       this.climaxBurstExpansion +=
         (1 - this.climaxBurstExpansion) * getTimeAdjustedEasing(0.16, frameScale);
       if (this.climaxEnergy < 0.42) this.climaxThresholdLatched = false;
+    }
+
+    // 高密度区間の直後に大きく音数が引いた時だけ中心吸引を発火し、次の展開へ溜めを作る。
+    const breakdownDetected =
+      previousPeakMemory > 0.26 &&
+      this.climaxEnergy > 0.28 &&
+      combinedEnergy < previousPeakMemory * 0.43 &&
+      this.arrangementDensity < 0.34 &&
+      macroEnergy < 0.52;
+    if (
+      breakdownDetected &&
+      this.orbitRareScatterProgress >= 1 &&
+      this.orbitRareCollapseProgress >= 1
+    ) {
+      this.orbitRareCollapseProgress = 0;
+      this.orbitRareCollapseStrength = Math.min(
+        1,
+        0.7 + previousPeakMemory * 0.65
+      );
+      // 同じブレイク中に再検出しないよう、記憶値を現在値まで落とす。
+      this.orbitPeakMemory = combinedEnergy;
     }
 
     return this.climaxEnergy;
@@ -724,6 +896,14 @@ class AudioSpectrumVisualizer {
     this.kickVisualPulse = kickPulse;
     this.snareVisualPulse = snarePulse;
     this.hatVisualPulse = hatPulse;
+    // Hi-hatごとに瞬光させる粒子群を切り替え、同じ点だけが点滅する機械的な見え方を避ける。
+    if (
+      hatPulse > 0.2 &&
+      (this.orbitLastHatPulse <= 0.2 || hatPulse - this.orbitLastHatPulse > 0.14)
+    ) {
+      this.orbitHatFlashStep += 1;
+    }
+    this.orbitLastHatPulse = hatPulse;
 
     for (let i = 0; i < BAR_COUNT_PER_SIDE; i += 1) {
       const noiseFloor = 0.16;
@@ -1006,7 +1186,8 @@ class AudioSpectrumVisualizer {
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const radius = Math.max(
+    // レイアウト上の最大半径。通常時はここから縮め、曲のピークだけ従来サイズへ戻す。
+    const maximumRadius = Math.max(
       54,
       Math.min(
         height * ORBIT_SPECTRUM_LAYOUT.maxRadiusHeightRatio,
@@ -1015,62 +1196,355 @@ class AudioSpectrumVisualizer {
       )
     );
     const centerX = Math.max(
-      radius * 1.15,
+      maximumRadius * 1.15,
       Math.min(
         width * ORBIT_SPECTRUM_LAYOUT.centerXRatio,
-        width - radius * ORBIT_SPECTRUM_LAYOUT.edgePaddingRatio
+        width - maximumRadius * ORBIT_SPECTRUM_LAYOUT.edgePaddingRatio
       )
     );
     const centerY = Math.max(
-      radius * 1.18,
-      Math.min(height * ORBIT_SPECTRUM_LAYOUT.centerYRatio, height - radius * 1.18)
+      maximumRadius * 1.18,
+      Math.min(
+        height * ORBIT_SPECTRUM_LAYOUT.centerYRatio,
+        height - maximumRadius * 1.18
+      )
     );
 
     let bassEnergy = 0;
+    let midEnergy = 0;
+    let highEnergy = 0;
     for (let index = 0; index < this.displayedBars.length; index += 1) {
       if (index < 5) bassEnergy += this.displayedBars[index];
+      else if (index < 16) midEnergy += this.displayedBars[index];
+      else highEnergy += this.displayedBars[index];
     }
     bassEnergy /= 5;
+    midEnergy /= 11;
+    highEnergy /= 8;
 
     const macroGlow = Math.pow(this.macroEnergy, 1.05);
-    const circlePulse =
-      1 + bassEnergy * 0.035 + this.kickVisualPulse * 0.045 + this.climaxBurst * 0.03;
-    const renderedRadius = radius * circlePulse;
+    // 持続音をそのまま半径へ足すと、マスタリング音量の大きい曲では常時最大になる。
+    // 高い閾値とカーブを通した持続成分に、短い打音成分を別枠で足して呼吸幅を作る。
+    const sustainedRadiusDrive =
+      macroGlow * 0.32 +
+      this.arrangementDensity * 0.15 +
+      this.climaxEnergy * 0.38 +
+      bassEnergy * 0.08;
+    const normalizedRadiusDrive = Math.min(
+      1,
+      Math.max(0, (sustainedRadiusDrive - 0.18) / 0.63)
+    );
+    const sustainedRadiusEnergy = Math.pow(normalizedRadiusDrive, 1.65);
+    const transientRadiusEnergy = Math.min(
+      1,
+      this.climaxBurst * this.climaxBurstExpansion * 0.78
+    );
+    // サビ突入の短い間だけ通常の最大半径をわずかに超え、展開の大きさを目で感じさせる。
+    // 常時成分は従来の上限内なので、通常時の円サイズには影響しない。
+    const renderedRadius = maximumRadius * Math.min(
+      1.04,
+      0.64 + sustainedRadiusEnergy * 0.27 + transientRadiusEnergy * 0.13
+    );
+    // 最外形の基準半径。楽器固有の圧縮・呼吸・レアイベントは後段で全体へ適用する。
+    const baseOuterRingRadius = renderedRadius * (1.035 + macroGlow * 0.008);
 
-    // 周波数帯と波形を一周へ展開する。隣接点も混ぜ、ギザギザではなく大きな塊で動かす。
+    // 内部の面は生のFFT値ではなく、慣性を持つ大きな流れで動かす。
+    // これにより音の各瞬間へピクつかず、強い音ほど広い面積が滑らかにうねる。
+    const orbitMotionFrameScale = this.lastOrbitMotionAt > 0
+      ? Math.min(4, Math.max(0.5, (now - this.lastOrbitMotionAt) / (1000 / 60)))
+      : 1;
+    this.lastOrbitMotionAt = now;
+    const flowEnergyTarget = Math.min(
+      1,
+      Math.max(
+        0.2,
+        0.18 +
+          macroGlow * 0.42 +
+          this.arrangementDensity * 0.22 +
+          bassEnergy * 0.14 +
+          midEnergy * 0.15 +
+          highEnergy * 0.07 +
+          this.climaxBurst * 0.18
+      )
+    );
+    const flowEnergyEasing = getTimeAdjustedEasing(
+      flowEnergyTarget > this.orbitFlowEnergy ? 0.105 : 0.045,
+      orbitMotionFrameScale
+    );
+    this.orbitFlowEnergy +=
+      (flowEnergyTarget - this.orbitFlowEnergy) * flowEnergyEasing;
+    const flowBassEasing = getTimeAdjustedEasing(
+      bassEnergy > this.orbitFlowBass ? 0.16 : 0.065,
+      orbitMotionFrameScale
+    );
+    this.orbitFlowBass += (bassEnergy - this.orbitFlowBass) * flowBassEasing;
+    const flowMidEasing = getTimeAdjustedEasing(
+      midEnergy > this.orbitFlowMid ? 0.13 : 0.052,
+      orbitMotionFrameScale
+    );
+    this.orbitFlowMid += (midEnergy - this.orbitFlowMid) * flowMidEasing;
+    const flowHighEasing = getTimeAdjustedEasing(
+      highEnergy > this.orbitFlowHigh ? 0.18 : 0.075,
+      orbitMotionFrameScale
+    );
+    this.orbitFlowHigh += (highEnergy - this.orbitFlowHigh) * flowHighEasing;
+    const accentTarget = Math.min(
+      1,
+      this.kickVisualPulse * 0.72 +
+        this.snareVisualPulse * 0.22 +
+        this.climaxBurst * 0.45
+    );
+    const accentEasing = getTimeAdjustedEasing(
+      accentTarget > this.orbitFlowAccent ? 0.18 : 0.075,
+      orbitMotionFrameScale
+    );
+    this.orbitFlowAccent += (accentTarget - this.orbitFlowAccent) * accentEasing;
+    const meshPresenceTarget = Math.min(
+      1,
+      0.07 +
+        macroGlow * 0.18 +
+        this.arrangementDensity * 0.28 +
+        this.orbitFlowMid * 0.1 +
+        this.kickVisualPulse * 0.34 +
+        this.snareVisualPulse * 0.05 +
+        this.climaxBurst * 0.24
+    );
+    const meshPresenceEasing = getTimeAdjustedEasing(
+      meshPresenceTarget > this.orbitMeshPresence ? 0.22 : 0.085,
+      orbitMotionFrameScale
+    );
+    this.orbitMeshPresence +=
+      (meshPresenceTarget - this.orbitMeshPresence) * meshPresenceEasing;
+    const overlapTarget = Math.min(
+      1,
+      Math.max(0, this.arrangementDensity - 0.12) * 0.76 +
+        this.snareVisualPulse * 0.08 +
+        this.climaxBurst * 0.54
+    );
+    const overlapEasing = getTimeAdjustedEasing(
+      overlapTarget > this.orbitOverlapStrength ? 0.15 : 0.055,
+      orbitMotionFrameScale
+    );
+    this.orbitOverlapStrength +=
+      (overlapTarget - this.orbitOverlapStrength) * overlapEasing;
+
+    // 緩やかな背景波とは別に、打音の瞬間だけ円を端から端まで横断する波面を発火する。
+    // 大きな波は約0.55〜0.7秒かけて横断させ、勢いを保ちながら目で流れを追える速度にする。
+    const kickHit = this.kickVisualPulse > 0.34 &&
+      (this.orbitLastKickPulse <= 0.34 ||
+        this.kickVisualPulse - this.orbitLastKickPulse > 0.16);
+    const snareHit = this.snareVisualPulse > 0.32 &&
+      (this.orbitLastSnarePulse <= 0.32 ||
+        this.snareVisualPulse - this.orbitLastSnarePulse > 0.15);
+    if (kickHit) {
+      this.orbitDirectionStep += 1;
+      const directionSign = this.orbitDirectionStep % 2 === 0 ? 1 : -1;
+      this.orbitFlowDirectionTarget +=
+        directionSign * (1.34 + (this.orbitDirectionStep % 3) * 0.43);
+      this.orbitKickSweepProgress = -1.2;
+      this.orbitKickSweepStrength = Math.min(
+        1.2,
+        0.72 + this.kickVisualPulse * 0.42 + this.climaxEnergy * 0.12
+      );
+      this.orbitKickSweepDirection =
+        this.orbitFlowDirectionTarget + directionSign * 0.38;
+      this.orbitKickCompressionProgress = 0;
+      this.orbitKickCompressionStrength = Math.min(
+        1,
+        0.68 + this.kickVisualPulse * 0.32
+      );
+    }
+    if (snareHit) {
+      this.orbitDirectionStep += 1;
+      const directionSign = this.orbitDirectionStep % 2 === 0 ? -1 : 1;
+      this.orbitSecondaryDirectionTarget +=
+        directionSign * (1.72 + (this.orbitDirectionStep % 4) * 0.29);
+      this.orbitSnareSweepProgress = -1.18;
+      this.orbitSnareSweepStrength = Math.min(
+        1.15,
+        0.68 + this.snareVisualPulse * 0.4 + this.arrangementDensity * 0.1
+      );
+      // Snareは必ず斜め方向へ切り、Kickの幅広い横断波と視覚言語を分ける。
+      this.orbitSnareSweepDirection =
+        (this.orbitDirectionStep % 2 === 0 ? Math.PI * 0.25 : Math.PI * 0.75) +
+        (directionSign < 0 ? Math.PI : 0);
+    }
+    this.orbitLastKickPulse = this.kickVisualPulse;
+    this.orbitLastSnarePulse = this.snareVisualPulse;
+    this.orbitFlowDirectionTarget +=
+      (0.00035 + this.orbitFlowMid * 0.001 + this.orbitFlowHigh * 0.00045) *
+      orbitMotionFrameScale;
+    this.orbitSecondaryDirectionTarget -=
+      (0.00024 + this.orbitFlowHigh * 0.0007) * orbitMotionFrameScale;
+    const directionEasing = getTimeAdjustedEasing(0.045, orbitMotionFrameScale);
+    this.orbitFlowDirection +=
+      (this.orbitFlowDirectionTarget - this.orbitFlowDirection) * directionEasing;
+    this.orbitSecondaryDirection +=
+      (this.orbitSecondaryDirectionTarget - this.orbitSecondaryDirection) * directionEasing;
+    this.orbitFlowPhase +=
+      (0.007 + this.orbitFlowMid * 0.024 + this.arrangementDensity * 0.006) *
+      orbitMotionFrameScale;
+    this.orbitBassPhase +=
+      (0.009 + this.orbitFlowBass * 0.034 + this.kickVisualPulse * 0.018) *
+      orbitMotionFrameScale;
+    this.orbitHighPhase +=
+      (0.014 + this.orbitFlowHigh * 0.048) *
+      orbitMotionFrameScale;
+    if (this.orbitKickSweepStrength > 0.008) {
+      this.orbitKickSweepProgress +=
+        (0.052 + this.orbitKickSweepStrength * 0.014) * orbitMotionFrameScale;
+      this.orbitKickSweepStrength *= Math.pow(0.982, orbitMotionFrameScale);
+      if (this.orbitKickSweepProgress > 1.28) this.orbitKickSweepStrength = 0;
+    }
+    if (this.orbitSnareSweepStrength > 0.008) {
+      this.orbitSnareSweepProgress +=
+        (0.13 + this.orbitSnareSweepStrength * 0.025) * orbitMotionFrameScale;
+      this.orbitSnareSweepStrength *= Math.pow(0.955, orbitMotionFrameScale);
+      if (this.orbitSnareSweepProgress > 1.28) this.orbitSnareSweepStrength = 0;
+    }
+
+    // Kickは約100msかけて中心へ圧縮し、その後すぐ解放する。
+    if (this.orbitKickCompressionProgress < 1) {
+      this.orbitKickCompressionProgress = Math.min(
+        1,
+        this.orbitKickCompressionProgress + 0.08 * orbitMotionFrameScale
+      );
+    }
+    const kickCompressionEnvelope = this.orbitKickCompressionProgress < 0.5
+      ? Math.sin((this.orbitKickCompressionProgress / 0.5) * Math.PI * 0.5)
+      : this.orbitKickCompressionProgress < 1
+        ? Math.cos(((this.orbitKickCompressionProgress - 0.5) / 0.5) * Math.PI * 0.5)
+        : 0;
+
+    // Bassは打音ではなく持続低域で、球全体を数秒周期でゆっくり呼吸させる。
+    this.orbitBassBreathPhase +=
+      (0.008 + this.orbitFlowBass * 0.012) * orbitMotionFrameScale;
+    const bassBreathScale = 1 +
+      Math.sin(this.orbitBassBreathPhase) * (0.006 + this.orbitFlowBass * 0.018);
+
+    if (this.orbitRareScatterProgress < 1) {
+      this.orbitRareScatterProgress = Math.min(
+        1,
+        this.orbitRareScatterProgress + 0.02 * orbitMotionFrameScale
+      );
+    }
+    const rareScatterEnvelope = this.orbitRareScatterProgress < 1
+      ? Math.sin(this.orbitRareScatterProgress * Math.PI) * this.orbitRareScatterStrength
+      : 0;
+
+    if (this.orbitRareCollapseProgress < 1) {
+      this.orbitRareCollapseProgress = Math.min(
+        1,
+        this.orbitRareCollapseProgress + 0.014 * orbitMotionFrameScale
+      );
+    }
+    const rareCollapseEnvelope = this.orbitRareCollapseProgress < 0.32
+      ? Math.sin((this.orbitRareCollapseProgress / 0.32) * Math.PI * 0.5)
+      : this.orbitRareCollapseProgress < 1
+        ? Math.cos(
+            ((this.orbitRareCollapseProgress - 0.32) / 0.68) * Math.PI * 0.5
+          )
+        : 0;
+    const instrumentRadiusScale =
+      bassBreathScale *
+      (1 - kickCompressionEnvelope * this.orbitKickCompressionStrength * 0.07) *
+      (1 - rareCollapseEnvelope * this.orbitRareCollapseStrength * 0.58);
+    const outerRingRadius = baseOuterRingRadius * instrumentRadiusScale;
+
+    // 帯域を円周へ2回展開し、片側だけが動く状態を避けながら完全な左右対称にも見せない。
+    // Mirror用の平滑値だけでなく生エネルギーとFluxも使い、打音へ即座に反応させる。
     for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
       const position = pointIndex / ORBIT_SPECTRUM_POINT_COUNT;
-      const bandPosition = position * (BAR_COUNT_PER_SIDE - 1);
+      const spectralPosition = (position * 2 + 0.09) % 1;
+      const bandPosition = spectralPosition * (BAR_COUNT_PER_SIDE - 1);
       const bandIndex = Math.floor(bandPosition);
       const bandMix = bandPosition - bandIndex;
-      const band =
+      const displayedBand =
         this.displayedBars[bandIndex] * (1 - bandMix) +
         this.displayedBars[Math.min(BAR_COUNT_PER_SIDE - 1, bandIndex + 1)] * bandMix;
+      const rawBand =
+        this.bandEnergy[bandIndex] * (1 - bandMix) +
+        this.bandEnergy[Math.min(BAR_COUNT_PER_SIDE - 1, bandIndex + 1)] * bandMix;
+      const flux =
+        this.bandFlux[bandIndex] * (1 - bandMix) +
+        this.bandFlux[Math.min(BAR_COUNT_PER_SIDE - 1, bandIndex + 1)] * bandMix;
+      const gatedRawBand = Math.max(0, (rawBand - 0.105) / 0.895);
+      const band = Math.max(displayedBand, Math.pow(gatedRawBand, 1.08) * 0.82);
       const waveformIndex = Math.min(
         this.timeDomainData.length - 1,
         Math.floor(position * this.timeDomainData.length)
       );
       const waveform = this.timeDomainData[waveformIndex] || 0;
-      this.orbitTargetProfile[pointIndex] =
-        Math.pow(Math.min(1, band * 1.45), 0.62) * 0.64 +
-        Math.abs(waveform) * 0.22 +
-        waveform * 0.11;
+      const angle = position * Math.PI * 2;
+      const asymmetry = 0.84 + Math.sin(angle * 3 + now * 0.00072) * 0.16;
+      const onsetLift = Math.min(1, flux * 7.5) * (0.3 + macroGlow * 0.7);
+      this.orbitTargetProfile[pointIndex] = Math.min(
+        1.15,
+        (
+          Math.pow(Math.min(1, band * 1.68), 0.58) * 0.7 +
+          onsetLift * 0.38 +
+          Math.abs(waveform) * 0.2 +
+          waveform * 0.08
+        ) * asymmetry
+      );
     }
 
     for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const previous2 = this.orbitTargetProfile[
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 2) % ORBIT_SPECTRUM_POINT_COUNT
+      ];
       const previous = this.orbitTargetProfile[
         (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 1) % ORBIT_SPECTRUM_POINT_COUNT
       ];
       const current = this.orbitTargetProfile[pointIndex];
       const next = this.orbitTargetProfile[(pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT];
-      const target = previous * 0.23 + current * 0.54 + next * 0.23;
-      const easing = target > this.orbitProfile[pointIndex] ? 0.48 : 0.18;
+      const next2 = this.orbitTargetProfile[(pointIndex + 2) % ORBIT_SPECTRUM_POINT_COUNT];
+      const target = previous2 * 0.09 + previous * 0.21 + current * 0.4 + next * 0.21 + next2 * 0.09;
+      const easing = target > this.orbitProfile[pointIndex] ? 0.64 : 0.23;
       this.orbitProfile[pointIndex] += (target - this.orbitProfile[pointIndex]) * easing;
     }
 
+    let rawOrbitMeanProfile = 0;
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      rawOrbitMeanProfile += this.orbitProfile[pointIndex];
+    }
+    rawOrbitMeanProfile /= ORBIT_SPECTRUM_POINT_COUNT;
+    const orbitMeanProfile = rawOrbitMeanProfile;
+
+    // 内部用の輪郭だけはさらに広く平滑化する。粒子の位置に細かなFFTの揺れを直結させない。
+    let orbitSurfaceMeanProfile = 0;
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const previous3 = this.orbitProfile[
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 3) % ORBIT_SPECTRUM_POINT_COUNT
+      ];
+      const previous2 = this.orbitProfile[
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 2) % ORBIT_SPECTRUM_POINT_COUNT
+      ];
+      const previous = this.orbitProfile[
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 1) % ORBIT_SPECTRUM_POINT_COUNT
+      ];
+      const current = this.orbitProfile[pointIndex];
+      const next = this.orbitProfile[(pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT];
+      const next2 = this.orbitProfile[(pointIndex + 2) % ORBIT_SPECTRUM_POINT_COUNT];
+      const next3 = this.orbitProfile[(pointIndex + 3) % ORBIT_SPECTRUM_POINT_COUNT];
+      const surfaceTarget =
+        current * 0.28 +
+        (previous + next) * 0.2 +
+        (previous2 + next2) * 0.1 +
+        (previous3 + next3) * 0.06;
+      const surfaceEasing = getTimeAdjustedEasing(
+        surfaceTarget > this.orbitSurfaceProfile[pointIndex] ? 0.12 : 0.052,
+        orbitMotionFrameScale
+      );
+      this.orbitSurfaceProfile[pointIndex] +=
+        (surfaceTarget - this.orbitSurfaceProfile[pointIndex]) * surfaceEasing;
+      orbitSurfaceMeanProfile += this.orbitSurfaceProfile[pointIndex];
+    }
+    orbitSurfaceMeanProfile /= ORBIT_SPECTRUM_POINT_COUNT;
+
     this.orbitHistoryCursor =
       (this.orbitHistoryCursor + ORBIT_MESH_LAYER_COUNT - 1) % ORBIT_MESH_LAYER_COUNT;
-    this.orbitHistory[this.orbitHistoryCursor].set(this.orbitProfile);
+    this.orbitHistory[this.orbitHistoryCursor].set(this.orbitSurfaceProfile);
     this.orbitHistoryCount = Math.min(ORBIT_MESH_LAYER_COUNT, this.orbitHistoryCount + 1);
 
     // 広い白青Glowを一度だけ敷き、暗い映像でも輪郭と点が埋もれないようにする。
@@ -1094,56 +1568,553 @@ class AudioSpectrumVisualizer {
       renderedRadius * 3.4
     );
 
-    const rotation = now * 0.000035;
+    const rotation = now * 0.000012;
     const historyLayers = Math.max(1, this.orbitHistoryCount);
+    const patternMorph = 0.5 + Math.sin(this.orbitFlowPhase * 0.31) * 0.5;
+    let dominantMelodyIndex = 0;
+    let dominantMelodyStrength = 0;
+    for (let melodyIndex = 0; melodyIndex < BAR_COUNT_PER_SIDE; melodyIndex += 1) {
+      if (this.melodyBars[melodyIndex] > dominantMelodyStrength) {
+        dominantMelodyStrength = this.melodyBars[melodyIndex];
+        dominantMelodyIndex = melodyIndex;
+      }
+    }
+    const normalizedMelodyStrength = Math.min(1, dominantMelodyStrength / 0.34);
+    if (normalizedMelodyStrength > 0.035) {
+      const melodySourceTarget =
+        -Math.PI * 0.72 +
+        (dominantMelodyIndex / Math.max(1, BAR_COUNT_PER_SIDE - 1)) * Math.PI * 1.44;
+      const melodyAngleDelta = Math.atan2(
+        Math.sin(melodySourceTarget - this.orbitMelodySourceAngle),
+        Math.cos(melodySourceTarget - this.orbitMelodySourceAngle)
+      );
+      this.orbitMelodySourceAngle +=
+        melodyAngleDelta * getTimeAdjustedEasing(0.035, orbitMotionFrameScale);
+    }
+    this.orbitMelodyRipplePhase +=
+      (0.024 + normalizedMelodyStrength * 0.034) * orbitMotionFrameScale;
+    const melodySourceX = Math.cos(this.orbitMelodySourceAngle) * 0.54;
+    const melodySourceY = Math.sin(this.orbitMelodySourceAngle) * 0.54;
+    const primaryCos = Math.cos(this.orbitFlowDirection);
+    const primarySin = Math.sin(this.orbitFlowDirection);
+    const primaryPerpendicularX = -primarySin;
+    const primaryPerpendicularY = primaryCos;
+    const secondaryCos = Math.cos(this.orbitSecondaryDirection);
+    const secondarySin = Math.sin(this.orbitSecondaryDirection);
+    const secondaryPerpendicularX = -secondarySin;
+    const secondaryPerpendicularY = secondaryCos;
+    const kickSweepCos = Math.cos(this.orbitKickSweepDirection);
+    const kickSweepSin = Math.sin(this.orbitKickSweepDirection);
+    const kickSweepPerpendicularX = -kickSweepSin;
+    const kickSweepPerpendicularY = kickSweepCos;
+    const snareSweepCos = Math.cos(this.orbitSnareSweepDirection);
+    const snareSweepSin = Math.sin(this.orbitSnareSweepDirection);
+    const snareSweepPerpendicularX = -snareSweepSin;
+    const snareSweepPerpendicularY = snareSweepCos;
+    const rotationCos = Math.cos(rotation);
+    const rotationSin = Math.sin(rotation);
+    const particleVisibilityAttack = getTimeAdjustedEasing(
+      0.56,
+      orbitMotionFrameScale
+    );
+    const particleVisibilityRelease = getTimeAdjustedEasing(
+      0.13,
+      orbitMotionFrameScale
+    );
+    const particlePopulation = Math.min(
+      0.78,
+      0.035 +
+        this.orbitMeshPresence * 0.29 +
+        this.arrangementDensity * 0.12 +
+        this.orbitFlowAccent * 0.17 +
+        this.climaxEnergy * 0.08 +
+        this.climaxBurst * 0.075
+    );
 
-    // 各リングは1点ずつ描画せず、4つのPathへまとめる（最大1472点・4fill）。
+    // 同心円ではなく、円内へクリップした平面状の粒子面を変形する。
+    // 波の進行方向へ履歴もずらし、複数の膜が別方向から重なる模様を作る。
+    for (let meshRow = 0; meshRow < ORBIT_MESH_GRID_SIZE; meshRow += 1) {
+      const rowRatio = meshRow / Math.max(1, ORBIT_MESH_GRID_SIZE - 1);
+      const rawY = (rowRatio * 2 - 1) * 0.94;
+      const staggerOffset = meshRow % 2 === 0 ? 0 : 1 / (ORBIT_MESH_GRID_SIZE - 1);
+
+      for (let meshColumn = 0; meshColumn < ORBIT_MESH_GRID_SIZE; meshColumn += 1) {
+        const meshIndex = meshRow * ORBIT_MESH_GRID_SIZE + meshColumn;
+        const columnRatio = meshColumn / Math.max(1, ORBIT_MESH_GRID_SIZE - 1);
+        const rawX = (columnRatio * 2 - 1 + staggerOffset) * 0.94;
+        const baseRadius = Math.hypot(rawX, rawY);
+        if (baseRadius > 0.95) {
+          this.orbitMeshDepth[meshIndex] = -1;
+          this.orbitMeshCrest[meshIndex] = 0;
+          this.orbitMeshVisibility[meshIndex] = 0;
+          continue;
+        }
+
+        const baseAngle = Math.atan2(rawY, rawX) + rotation;
+        const baseX = rawX * rotationCos - rawY * rotationSin;
+        const baseY = rawX * rotationSin + rawY * rotationCos;
+        const primaryProjection = baseX * primaryCos + baseY * primarySin;
+        const secondaryProjection = baseX * secondaryCos + baseY * secondarySin;
+        const primaryAcross =
+          baseX * primaryPerpendicularX + baseY * primaryPerpendicularY;
+        const secondaryAcross =
+          baseX * secondaryPerpendicularX + baseY * secondaryPerpendicularY;
+        const historyPosition = Math.min(1, Math.max(0, primaryProjection * 0.5 + 0.5));
+        const historyAge = Math.min(
+          historyLayers - 1,
+          Math.floor(historyPosition * Math.max(0, historyLayers - 1))
+        );
+        const historyIndex =
+          (this.orbitHistoryCursor + historyAge) % ORBIT_MESH_LAYER_COUNT;
+        const profile = this.orbitHistory[historyIndex];
+        const profilePosition = ((baseAngle / (Math.PI * 2)) + 1) % 1;
+        const profileIndex = Math.min(
+          ORBIT_SPECTRUM_POINT_COUNT - 1,
+          Math.floor(profilePosition * ORBIT_SPECTRUM_POINT_COUNT)
+        );
+        const energy = Math.max(0, profile[profileIndex]);
+        const localizedEnergy = Math.max(0, energy - orbitSurfaceMeanProfile * 0.48);
+        const historyRatio = historyAge / Math.max(1, ORBIT_MESH_LAYER_COUNT - 1);
+        const mobility =
+          0.28 + Math.sqrt(Math.max(0, 1 - baseRadius / 0.95)) * 0.72;
+        const melodySourceDeltaX = baseX - melodySourceX;
+        const melodySourceDeltaY = baseY - melodySourceY;
+        const melodySourceDistance = Math.max(
+          0.001,
+          Math.hypot(melodySourceDeltaX, melodySourceDeltaY)
+        );
+        const melodyRipple = Math.sin(
+          melodySourceDistance * 11.2 - this.orbitMelodyRipplePhase * 2.1
+        ) * Math.exp(-melodySourceDistance * 0.62);
+        const melodyRippleDirectionX = melodySourceDeltaX / melodySourceDistance;
+        const melodyRippleDirectionY = melodySourceDeltaY / melodySourceDistance;
+        const melodyRippleAmplitude =
+          normalizedMelodyStrength *
+          (0.012 + energy * 0.052) *
+          (0.5 + mobility * 0.5) *
+          (1 + this.orbitFlowMid * 0.36);
+
+        const melodyWave = Math.sin(
+          primaryProjection * (2.45 + patternMorph * 0.8) -
+            this.orbitFlowPhase * 1.42 + baseY * 0.86 + historyRatio * 0.75
+        );
+        const crossingWave = Math.cos(
+          secondaryProjection * (2.2 + (1 - patternMorph) * 0.95) +
+            this.orbitFlowPhase * 0.84 - baseX * 1.08 - historyRatio * 0.62
+        );
+        const snareWave = Math.sin(
+          secondaryAcross * 3.75 - this.orbitFlowPhase * 0.48 + baseY * 0.72
+        );
+        const bassWave = Math.sin(
+          baseRadius * 7.2 - this.orbitBassPhase * 2.35 + historyRatio * 0.48
+        );
+        const highWave = Math.sin(
+          (primaryAcross - secondaryAcross) * 6.4 +
+            this.orbitHighPhase * 1.85 - baseY * 2.1
+        );
+
+        // ガウス状の波頭を高速移動させ、その前後を逆方向へ押して大きな圧縮波にする。
+        const kickSweepProjection = baseX * kickSweepCos + baseY * kickSweepSin;
+        const kickSweepAcross =
+          baseX * kickSweepPerpendicularX + baseY * kickSweepPerpendicularY;
+        const kickSweepDelta = kickSweepProjection - this.orbitKickSweepProgress;
+        const kickSweepNormalized = kickSweepDelta / 0.145;
+        const kickSweepCrest = Math.exp(
+          -0.5 * kickSweepNormalized * kickSweepNormalized
+        ) * this.orbitKickSweepStrength;
+        const kickSweepPush = kickSweepNormalized * kickSweepCrest;
+        const kickSweepCurl = Math.sin(
+          kickSweepAcross * 5.4 + this.orbitKickSweepProgress * 4.8
+        ) * kickSweepCrest;
+
+        const snareSweepProjection = baseX * snareSweepCos + baseY * snareSweepSin;
+        const snareSweepAcross =
+          baseX * snareSweepPerpendicularX + baseY * snareSweepPerpendicularY;
+        const snareSweepDelta = snareSweepProjection - this.orbitSnareSweepProgress;
+        const snareSweepNormalized = snareSweepDelta / 0.066;
+        const snareSweepCrest = Math.exp(
+          -0.5 * snareSweepNormalized * snareSweepNormalized
+        ) * this.orbitSnareSweepStrength;
+        const snareSweepPush = snareSweepNormalized * snareSweepCrest;
+        const snareSweepCurl = Math.sin(
+          snareSweepAcross * 7.2 - this.orbitSnareSweepProgress * 5.6
+        ) * snareSweepCrest;
+        const instantWaveCrest = Math.min(1, kickSweepCrest + snareSweepCrest);
+
+        const motionForce =
+          1 + this.orbitFlowEnergy * 0.86 + this.climaxBurst * 0.72 +
+          this.orbitOverlapStrength * 0.15;
+        const melodyAmplitude =
+          (0.036 + this.orbitFlowMid * 0.32 + this.arrangementDensity * 0.08) *
+          mobility * motionForce;
+        const crossingAmplitude =
+          (0.015 + this.arrangementDensity * 0.175 + this.climaxBurst * 0.15) *
+          mobility * motionForce;
+        // Snare本体は球全体を歪ませず、細い斜めSweep側へ力を集約する。
+        const snareAmplitude =
+          this.snareVisualPulse * (0.012 + mobility * 0.042) * motionForce;
+        const bassAmplitude =
+          bassWave * (0.018 + this.orbitFlowBass * 0.135) *
+            (0.4 + mobility * 0.6) * motionForce;
+        const highAmplitude =
+          highWave * this.orbitFlowHigh * 0.018 *
+          mobility * motionForce;
+        const profileAmplitude =
+          localizedEnergy * (0.02 + mobility * 0.075) * motionForce;
+        // 波の進行方向にも面を押し引きし、粒子が帯へ集積してからほどける流れを作る。
+        // 横方向の蛇行だけだった時の「均一な網」を崩し、NCSらしい濃淡のある波面にする。
+        const primaryFoldWave = Math.sin(
+          primaryProjection * (2.72 + patternMorph * 0.64) -
+            this.orbitFlowPhase * 1.34 + historyRatio * 0.82 + 0.9
+        );
+        const secondaryFoldWave = Math.cos(
+          secondaryProjection * (2.34 + (1 - patternMorph) * 0.72) +
+            this.orbitFlowPhase * 0.77 - historyRatio * 0.54 - 0.62
+        );
+        const primaryFoldAmplitude =
+          (0.02 + this.orbitFlowMid * 0.135 + this.orbitFlowAccent * 0.065) *
+          mobility * motionForce;
+        const secondaryFoldAmplitude =
+          (0.011 + this.arrangementDensity * 0.082 +
+            this.climaxBurst * 0.07) *
+          mobility * motionForce;
+        const primaryCompression =
+          Math.pow(Math.max(0, melodyWave * 0.5 + 0.5), 1.7) *
+          (0.025 + this.orbitFlowMid * 0.13 + this.orbitFlowAccent * 0.07) *
+          mobility * motionForce;
+        const secondaryCompression =
+          Math.pow(Math.max(0, crossingWave * 0.5 + 0.5), 1.8) *
+          (0.012 + this.arrangementDensity * 0.08 +
+            this.climaxBurst * 0.065) *
+          mobility * motionForce;
+
+        let displacedX =
+          baseX +
+          primaryPerpendicularX * melodyWave * melodyAmplitude +
+          secondaryPerpendicularX * crossingWave * crossingAmplitude +
+          primaryCos * (primaryFoldWave * primaryFoldAmplitude -
+            primaryProjection * primaryCompression) +
+          secondaryCos * (secondaryFoldWave * secondaryFoldAmplitude -
+            secondaryProjection * secondaryCompression) +
+          secondaryCos * snareWave * snareAmplitude +
+          Math.cos(baseAngle) * (bassAmplitude + profileAmplitude) +
+          primaryCos * highAmplitude +
+          melodyRippleDirectionX * melodyRipple * melodyRippleAmplitude +
+          kickSweepCos * kickSweepPush * (0.19 + mobility * 0.13) +
+          kickSweepPerpendicularX * kickSweepCurl * (0.105 + mobility * 0.09) +
+          snareSweepCos * snareSweepPush * (0.145 + mobility * 0.1) +
+          snareSweepPerpendicularX * snareSweepCurl * (0.085 + mobility * 0.07);
+        let displacedY =
+          baseY +
+          primaryPerpendicularY * melodyWave * melodyAmplitude +
+          secondaryPerpendicularY * crossingWave * crossingAmplitude +
+          primarySin * (primaryFoldWave * primaryFoldAmplitude -
+            primaryProjection * primaryCompression) +
+          secondarySin * (secondaryFoldWave * secondaryFoldAmplitude -
+            secondaryProjection * secondaryCompression) +
+          secondarySin * snareWave * snareAmplitude +
+          Math.sin(baseAngle) * (bassAmplitude + profileAmplitude) +
+          primarySin * highAmplitude +
+          melodyRippleDirectionY * melodyRipple * melodyRippleAmplitude +
+          kickSweepSin * kickSweepPush * (0.19 + mobility * 0.13) +
+          kickSweepPerpendicularY * kickSweepCurl * (0.105 + mobility * 0.09) +
+          snareSweepSin * snareSweepPush * (0.145 + mobility * 0.1) +
+          snareSweepPerpendicularY * snareSweepCurl * (0.085 + mobility * 0.07);
+
+        const displacedRadius = Math.hypot(displacedX, displacedY);
+        if (displacedRadius > 0.976) {
+          const radiusScale = 0.976 / displacedRadius;
+          displacedX *= radiusScale;
+          displacedY *= radiusScale;
+        }
+        this.orbitMeshX[meshIndex] = centerX + displacedX * outerRingRadius;
+        this.orbitMeshY[meshIndex] = centerY + displacedY * outerRingRadius;
+        // 音数が増えた区間では、別方向から来る薄い膜を独立した位置へ重ねる。
+        // 同じ粒子数を再利用するため、密度感を上げてもFFT処理や描画負荷は急増しない。
+        let echoX =
+          baseX +
+          secondaryPerpendicularX * crossingWave * crossingAmplitude * 1.42 -
+          primaryPerpendicularX * melodyWave * melodyAmplitude * 0.46 +
+          secondaryCos * secondaryFoldWave * secondaryFoldAmplitude * 1.28 +
+          primaryCos * primaryFoldWave * primaryFoldAmplitude * 0.38 +
+          secondaryCos * snareWave * snareAmplitude * 0.58 +
+          Math.cos(baseAngle) * bassAmplitude * 0.52 -
+          melodyRippleDirectionX * melodyRipple * melodyRippleAmplitude * 0.42 -
+          kickSweepCos * kickSweepPush * 0.17 +
+          kickSweepPerpendicularX * kickSweepCurl * 0.12 -
+          snareSweepCos * snareSweepPush * 0.12;
+        let echoY =
+          baseY +
+          secondaryPerpendicularY * crossingWave * crossingAmplitude * 1.42 -
+          primaryPerpendicularY * melodyWave * melodyAmplitude * 0.46 +
+          secondarySin * secondaryFoldWave * secondaryFoldAmplitude * 1.28 +
+          primarySin * primaryFoldWave * primaryFoldAmplitude * 0.38 +
+          secondarySin * snareWave * snareAmplitude * 0.58 +
+          Math.sin(baseAngle) * bassAmplitude * 0.52 -
+          melodyRippleDirectionY * melodyRipple * melodyRippleAmplitude * 0.42 -
+          kickSweepSin * kickSweepPush * 0.17 +
+          kickSweepPerpendicularY * kickSweepCurl * 0.12 -
+          snareSweepSin * snareSweepPush * 0.12;
+        const echoRadius = Math.hypot(echoX, echoY);
+        if (echoRadius > 0.972) {
+          const echoRadiusScale = 0.972 / echoRadius;
+          echoX *= echoRadiusScale;
+          echoY *= echoRadiusScale;
+        }
+        this.orbitMeshEchoX[meshIndex] = centerX + echoX * outerRingRadius;
+        this.orbitMeshEchoY[meshIndex] = centerY + echoY * outerRingRadius;
+        const sphereDepth = Math.sqrt(Math.max(0, 1 - Math.pow(baseRadius / 0.95, 2)));
+        this.orbitMeshDepth[meshIndex] = Math.min(
+          1,
+          Math.max(
+            0,
+            0.38 + sphereDepth * 0.16 + melodyWave * 0.17 + crossingWave * 0.17 +
+              snareWave * this.snareVisualPulse * 0.045 +
+              bassWave * this.orbitFlowBass * 0.1 +
+              melodyRipple * normalizedMelodyStrength * 0.14
+          )
+        );
+        this.orbitMeshCrest[meshIndex] = Math.min(
+          1,
+          Math.max(
+            0,
+            0.43 + melodyWave * 0.2 + crossingWave * 0.17 +
+              Math.max(0, snareWave) * this.snareVisualPulse * 0.04 +
+              Math.max(0, bassWave) * (this.orbitFlowBass * 0.16 + this.kickVisualPulse * 0.2) +
+              highWave * this.orbitFlowHigh * 0.055 + localizedEnergy * 0.38 +
+              instantWaveCrest * 0.62 +
+              Math.max(0, melodyRipple) * normalizedMelodyStrength * 0.34
+          )
+        );
+        // 粒子数そのものを音楽で変える。固定シードと慣性を組み合わせることで、
+        // 波頭では密集し、拍間では滑らかにほどけながら消える。
+        const localPopulation = Math.min(
+          1,
+          Math.max(
+            0.025,
+            particlePopulation +
+              Math.max(0, melodyWave) * (0.13 + this.orbitFlowMid * 0.08) +
+              Math.max(0, crossingWave) *
+                (0.08 + this.arrangementDensity * 0.075) +
+              Math.max(0, bassWave) * this.orbitFlowBass * 0.075 +
+              Math.max(0, snareWave) * this.snareVisualPulse * 0.025 -
+              Math.max(0, -melodyWave) * 0.055 +
+              instantWaveCrest * 0.52 +
+              Math.max(0, melodyRipple) * normalizedMelodyStrength * 0.2
+          )
+        );
+        const visibilityTarget = Math.min(
+          1,
+          Math.max(
+            0,
+            (localPopulation - this.orbitMeshSeed[meshIndex] + 0.09) / 0.18
+          )
+        );
+        const previousVisibility = this.orbitMeshVisibility[meshIndex];
+        const visibilityEasing = visibilityTarget > previousVisibility
+          ? particleVisibilityAttack
+          : particleVisibilityRelease;
+        this.orbitMeshVisibility[meshIndex] =
+          previousVisibility +
+          (visibilityTarget - previousVisibility) * visibilityEasing;
+      }
+    }
+
     context.save();
     context.globalCompositeOperation = 'lighter';
     context.shadowBlur = 0;
-    for (let depthGroup = 0; depthGroup < 4; depthGroup += 1) {
-      context.beginPath();
-      for (let meshLayer = depthGroup; meshLayer < historyLayers; meshLayer += 4) {
-        const layerRatio = meshLayer / Math.max(1, ORBIT_MESH_LAYER_COUNT - 1);
-        const historyIndex =
-          (this.orbitHistoryCursor + meshLayer) % ORBIT_MESH_LAYER_COUNT;
-        const profile = this.orbitHistory[historyIndex];
-        const angleOffset = rotation - layerRatio * (0.24 + macroGlow * 0.1);
-        const baseRadiusRatio = 0.975 - layerRatio * 0.42;
-        for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
-          const angle =
-            (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 +
-            angleOffset;
-          const energyShape = Math.max(0, profile[pointIndex]);
-          const flow = Math.sin(angle * 2.4 - now * 0.0012 + meshLayer * 0.32);
-          const pointRadius = renderedRadius * Math.max(
-            0.42,
-            baseRadiusRatio + energyShape * (0.34 - layerRatio * 0.055) +
-              flow * energyShape * 0.018
-          );
-          const x = centerX + Math.cos(angle) * pointRadius;
-          const y = centerY + Math.sin(angle) * pointRadius;
-          const pointSize = 0.72 + (1 - layerRatio) * 0.78 + energyShape * 0.58;
 
-          context.rect(x - pointSize / 2, y - pointSize / 2, pointSize, pointSize);
+    // 薄い下地は常時残し、拍間は抜け、アタック時には一気に面が満ちるようにする。
+    context.beginPath();
+    for (let meshRow = 0; meshRow < ORBIT_MESH_GRID_SIZE; meshRow += 1) {
+      for (let meshColumn = 0; meshColumn < ORBIT_MESH_GRID_SIZE; meshColumn += 1) {
+        const meshIndex = meshRow * ORBIT_MESH_GRID_SIZE + meshColumn;
+        const depth = this.orbitMeshDepth[meshIndex];
+        const visibility = this.orbitMeshVisibility[meshIndex];
+        if (depth < 0 || visibility < 0.08) continue;
+        const pointSize = (
+          1.42 + depth * 0.72 +
+          this.orbitFlowEnergy * 0.22 + this.arrangementDensity * 0.28
+        ) * (0.76 + visibility * 0.36);
+        const pointRadius = pointSize / 2;
+        context.moveTo(this.orbitMeshX[meshIndex] + pointRadius, this.orbitMeshY[meshIndex]);
+        context.arc(
+          this.orbitMeshX[meshIndex],
+          this.orbitMeshY[meshIndex],
+          pointRadius,
+          0,
+          Math.PI * 2
+        );
+      }
+    }
+    context.fillStyle = `rgba(205, 235, 255, ${
+      0.13 + this.orbitMeshPresence * 0.33 + macroGlow * 0.08
+    })`;
+    context.fill();
+
+    // Hi-hatは形状へ力を加えず、球面上の微粒子だけを一瞬パッと点灯させる。
+    if (this.hatVisualPulse > 0.045) {
+      const hatFlashStrength = Math.sqrt(this.hatVisualPulse);
+      context.beginPath();
+      for (let meshIndex = 0; meshIndex < this.orbitMeshDepth.length; meshIndex += 1) {
+        if (this.orbitMeshDepth[meshIndex] < 0) continue;
+        const flashSeed = (
+          this.orbitMeshSeed[meshIndex] + this.orbitHatFlashStep * 0.61803398875
+        ) % 1;
+        if (flashSeed < 0.9 - hatFlashStrength * 0.07) continue;
+        const pointRadius =
+          0.38 + flashSeed * 0.28 + hatFlashStrength * 0.22;
+        context.moveTo(
+          this.orbitMeshX[meshIndex] + pointRadius,
+          this.orbitMeshY[meshIndex]
+        );
+        context.arc(
+          this.orbitMeshX[meshIndex],
+          this.orbitMeshY[meshIndex],
+          pointRadius,
+          0,
+          Math.PI * 2
+        );
+      }
+      context.fillStyle = `rgba(252, 254, 255, ${0.28 + hatFlashStrength * 0.64})`;
+      context.shadowColor = `rgba(204, 238, 255, ${hatFlashStrength * 0.52})`;
+      context.shadowBlur = 1.5 + hatFlashStrength * 2.5;
+      context.fill();
+      context.shadowBlur = 0;
+    }
+
+    // 面全体を横切る波頭だけを重ね、濃い波と薄い波を連続した帯として見せる。
+    context.beginPath();
+    for (let meshRow = 0; meshRow < ORBIT_MESH_GRID_SIZE; meshRow += 1) {
+      for (let meshColumn = 0; meshColumn < ORBIT_MESH_GRID_SIZE; meshColumn += 1) {
+        const meshIndex = meshRow * ORBIT_MESH_GRID_SIZE + meshColumn;
+        if (this.orbitMeshDepth[meshIndex] < 0) continue;
+        const crest = this.orbitMeshCrest[meshIndex];
+        const visibility = this.orbitMeshVisibility[meshIndex];
+        if (crest < 0.44 || visibility < 0.24) continue;
+        const depth = this.orbitMeshDepth[meshIndex];
+        const pointSize = (
+          1.64 + (crest - 0.44) * 2.05 + depth * 0.62
+        ) * (0.84 + visibility * 0.22);
+        const pointRadius = pointSize / 2;
+        context.moveTo(this.orbitMeshX[meshIndex] + pointRadius, this.orbitMeshY[meshIndex]);
+        context.arc(
+          this.orbitMeshX[meshIndex],
+          this.orbitMeshY[meshIndex],
+          pointRadius,
+          0,
+          Math.PI * 2
+        );
+      }
+    }
+    context.fillStyle = `rgba(225, 244, 255, ${
+      0.38 + this.orbitMeshPresence * 0.48 + this.orbitOverlapStrength * 0.1
+    })`;
+    context.fill();
+
+    // 交差する第2波面。強い編曲区間だけ現れ、別方向の帯と重なって一瞬の模様を作る。
+    if (this.orbitOverlapStrength > 0.075) {
+      const echoThreshold = 0.66 - this.orbitOverlapStrength * 0.2;
+      context.beginPath();
+      for (let meshRow = 0; meshRow < ORBIT_MESH_GRID_SIZE; meshRow += 1) {
+        for (let meshColumn = 0; meshColumn < ORBIT_MESH_GRID_SIZE; meshColumn += 1) {
+          const meshIndex = meshRow * ORBIT_MESH_GRID_SIZE + meshColumn;
+          if (this.orbitMeshDepth[meshIndex] < 0) continue;
+          const crest = this.orbitMeshCrest[meshIndex];
+          const visibility = this.orbitMeshVisibility[meshIndex];
+          if (crest < echoThreshold || visibility < 0.38) continue;
+          const pointSize =
+            1.26 + (crest - echoThreshold) * 1.92 +
+            this.orbitOverlapStrength * 0.36;
+          const pointRadius = pointSize / 2;
+          context.moveTo(
+            this.orbitMeshEchoX[meshIndex] + pointRadius,
+            this.orbitMeshEchoY[meshIndex]
+          );
+          context.arc(
+            this.orbitMeshEchoX[meshIndex],
+            this.orbitMeshEchoY[meshIndex],
+            pointRadius,
+            0,
+            Math.PI * 2
+          );
         }
       }
-      context.fillStyle = `rgba(${210 + depthGroup * 12}, ${232 + depthGroup * 6}, 255, ${
-        0.46 + depthGroup * 0.09 + macroGlow * 0.1
+      context.fillStyle = `rgba(184, 225, 255, ${
+        0.12 + this.orbitOverlapStrength * 0.36
       })`;
       context.fill();
     }
+
+    // 最前面へ回り込んだ帯は、広い範囲だけを強く光らせて立体感と迫力を作る。
+    context.beginPath();
+    for (let meshRow = 0; meshRow < ORBIT_MESH_GRID_SIZE; meshRow += 1) {
+      for (let meshColumn = 0; meshColumn < ORBIT_MESH_GRID_SIZE; meshColumn += 1) {
+        const meshIndex = meshRow * ORBIT_MESH_GRID_SIZE + meshColumn;
+        if (this.orbitMeshDepth[meshIndex] < 0) continue;
+        const crest = this.orbitMeshCrest[meshIndex];
+        const depth = this.orbitMeshDepth[meshIndex];
+        const visibility = this.orbitMeshVisibility[meshIndex];
+        if (crest < 0.7 || depth < 0.55 || visibility < 0.5) continue;
+        const pointSize =
+          1.82 + (crest - 0.7) * 2.75 + (depth - 0.55) * 1.24 +
+          this.orbitFlowAccent * 0.56;
+        const pointRadius = pointSize / 2;
+        context.moveTo(this.orbitMeshX[meshIndex] + pointRadius, this.orbitMeshY[meshIndex]);
+        context.arc(
+          this.orbitMeshX[meshIndex],
+          this.orbitMeshY[meshIndex],
+          pointRadius,
+          0,
+          Math.PI * 2
+        );
+      }
+    }
+    context.fillStyle = `rgba(247, 252, 255, ${
+      0.62 + macroGlow * 0.2 + this.orbitFlowAccent * 0.14
+    })`;
+    context.shadowColor = `rgba(178, 226, 255, ${0.2 + macroGlow * 0.22})`;
+    context.shadowBlur = 3 + macroGlow * 4;
+    context.fill();
     context.restore();
 
-    // 最新輪郭を滑らかな二次曲線に変換し、NCSの太い白い外周を作る。
+    // 外側は正円へ固定し、音の強さは内側へ食い込むリボン厚としてだけ表現する。
     for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
       const angle = (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 + rotation;
-      const contourRadius = renderedRadius * (
-        0.99 + this.orbitProfile[pointIndex] * 0.38 +
-        this.kickVisualPulse * 0.025
+      const profile = Math.max(0, this.orbitProfile[pointIndex]);
+      const localizedProfile = Math.max(0, profile - orbitMeanProfile * 0.9);
+      const shapedProfile = Math.pow(localizedProfile, 0.62);
+      const transientThickness = shapedProfile * (
+        this.kickVisualPulse * 0.042
       );
+      const baseRibbonThickness =
+        2 +
+        renderedRadius * (
+          0.0012 +
+          Math.pow(orbitMeanProfile, 0.8) * 0.01 +
+          shapedProfile * (
+            0.205 + macroGlow * 0.068 + this.arrangementDensity * 0.04
+          ) +
+          transientThickness
+        ) +
+        this.kickVisualPulse * 2.4;
+      // 明瞭な芯と薄い膜の比率を変えず、両方を含む外周全体の幅を2倍にする。
+      const ribbonThickness = Math.min(
+        outerRingRadius * 0.44,
+        baseRibbonThickness * 2
+      );
+      const innerRadius = outerRingRadius - ribbonThickness;
+      const contourRadius = outerRingRadius - ribbonThickness * 0.42;
       this.orbitContourX[pointIndex] = centerX + Math.cos(angle) * contourRadius;
       this.orbitContourY[pointIndex] = centerY + Math.sin(angle) * contourRadius;
+      this.orbitRibbonOuterX[pointIndex] =
+        centerX + Math.cos(angle) * outerRingRadius;
+      this.orbitRibbonOuterY[pointIndex] =
+        centerY + Math.sin(angle) * outerRingRadius;
+      this.orbitRibbonInnerX[pointIndex] =
+        centerX + Math.cos(angle) * innerRadius;
+      this.orbitRibbonInnerY[pointIndex] =
+        centerY + Math.sin(angle) * innerRadius;
     }
 
     context.save();
@@ -1152,6 +2123,147 @@ class AudioSpectrumVisualizer {
     context.lineCap = 'round';
     context.beginPath();
     const lastIndex = ORBIT_SPECTRUM_POINT_COUNT - 1;
+    context.moveTo(
+      (this.orbitRibbonOuterX[lastIndex] + this.orbitRibbonOuterX[0]) / 2,
+      (this.orbitRibbonOuterY[lastIndex] + this.orbitRibbonOuterY[0]) / 2
+    );
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const nextIndex = (pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT;
+      context.quadraticCurveTo(
+        this.orbitRibbonOuterX[pointIndex],
+        this.orbitRibbonOuterY[pointIndex],
+        (this.orbitRibbonOuterX[pointIndex] + this.orbitRibbonOuterX[nextIndex]) / 2,
+        (this.orbitRibbonOuterY[pointIndex] + this.orbitRibbonOuterY[nextIndex]) / 2
+      );
+    }
+    context.lineTo(
+      (this.orbitRibbonInnerX[lastIndex] + this.orbitRibbonInnerX[0]) / 2,
+      (this.orbitRibbonInnerY[lastIndex] + this.orbitRibbonInnerY[0]) / 2
+    );
+    for (let pointIndex = lastIndex; pointIndex >= 0; pointIndex -= 1) {
+      const previousIndex =
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 1) % ORBIT_SPECTRUM_POINT_COUNT;
+      context.quadraticCurveTo(
+        this.orbitRibbonInnerX[pointIndex],
+        this.orbitRibbonInnerY[pointIndex],
+        (this.orbitRibbonInnerX[pointIndex] + this.orbitRibbonInnerX[previousIndex]) / 2,
+        (this.orbitRibbonInnerY[pointIndex] + this.orbitRibbonInnerY[previousIndex]) / 2
+      );
+    }
+    context.closePath();
+    // 厚い波の内縁は透明へ溶かし、固い白線ではなく粒子へ移行する帯にする。
+    const ribbonGradient = context.createRadialGradient(
+      centerX,
+      centerY,
+      outerRingRadius * 0.7,
+      centerX,
+      centerY,
+      outerRingRadius
+    );
+    ribbonGradient.addColorStop(0, 'rgba(232, 247, 255, 0)');
+    ribbonGradient.addColorStop(0.36, 'rgba(232, 247, 255, 0)');
+    ribbonGradient.addColorStop(
+      0.58,
+      `rgba(235, 248, 255, ${0.025 + macroGlow * 0.035})`
+    );
+    ribbonGradient.addColorStop(
+      0.78,
+      `rgba(242, 250, 255, ${0.13 + macroGlow * 0.08})`
+    );
+    ribbonGradient.addColorStop(
+      0.92,
+      `rgba(248, 252, 255, ${0.46 + macroGlow * 0.16})`
+    );
+    ribbonGradient.addColorStop(
+      1,
+      `rgba(255, 255, 255, ${0.84 + macroGlow * 0.14})`
+    );
+    context.fillStyle = ribbonGradient;
+    context.shadowColor = `rgba(178, 224, 255, ${0.5 + macroGlow * 0.2})`;
+    context.shadowBlur = 8 + macroGlow * 13 + this.kickVisualPulse * 4;
+    context.fill();
+
+    // 薄い発光膜だけで厚く見せず、音で変形した外周の外側約42%を明瞭な芯として塗る。
+    // 基準円の線幅は下の独立した stroke に任せ、ここでは内向きの厚みだけを増やす。
+    context.beginPath();
+    context.moveTo(
+      (this.orbitRibbonOuterX[lastIndex] + this.orbitRibbonOuterX[0]) / 2,
+      (this.orbitRibbonOuterY[lastIndex] + this.orbitRibbonOuterY[0]) / 2
+    );
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+      const nextIndex = (pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT;
+      context.quadraticCurveTo(
+        this.orbitRibbonOuterX[pointIndex],
+        this.orbitRibbonOuterY[pointIndex],
+        (this.orbitRibbonOuterX[pointIndex] + this.orbitRibbonOuterX[nextIndex]) / 2,
+        (this.orbitRibbonOuterY[pointIndex] + this.orbitRibbonOuterY[nextIndex]) / 2
+      );
+    }
+    context.lineTo(
+      (this.orbitContourX[lastIndex] + this.orbitContourX[0]) / 2,
+      (this.orbitContourY[lastIndex] + this.orbitContourY[0]) / 2
+    );
+    for (let pointIndex = lastIndex; pointIndex >= 0; pointIndex -= 1) {
+      const previousIndex =
+        (pointIndex + ORBIT_SPECTRUM_POINT_COUNT - 1) % ORBIT_SPECTRUM_POINT_COUNT;
+      context.quadraticCurveTo(
+        this.orbitContourX[pointIndex],
+        this.orbitContourY[pointIndex],
+        (this.orbitContourX[pointIndex] + this.orbitContourX[previousIndex]) / 2,
+        (this.orbitContourY[pointIndex] + this.orbitContourY[previousIndex]) / 2
+      );
+    }
+    context.closePath();
+    context.fillStyle = `rgba(249, 253, 255, ${
+      0.38 + macroGlow * 0.2 + this.kickVisualPulse * 0.09
+    })`;
+    context.shadowColor = `rgba(190, 231, 255, ${0.42 + macroGlow * 0.18})`;
+    context.shadowBlur = 4 + macroGlow * 7;
+    context.fill();
+
+    // リボンの最外端を独立した正円で締め、どれだけ音が強くても輪郭を美しく保つ。
+    context.beginPath();
+    context.arc(centerX, centerY, outerRingRadius, 0, Math.PI * 2);
+    context.strokeStyle = `rgba(255, 255, 255, ${0.72 + macroGlow * 0.22})`;
+    context.lineWidth = 1.35 + macroGlow * 0.9;
+    context.shadowBlur = 7 + macroGlow * 9;
+    context.stroke();
+
+    // レアイベントでは外周の粒子だけを約10〜22px外へ飛ばし、同じ軌道で吸い戻す。
+    if (rareScatterEnvelope > 0.015) {
+      context.shadowBlur = 0;
+      context.beginPath();
+      for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
+        const profile = Math.max(0, this.orbitProfile[pointIndex]);
+        for (let scatterLayer = 0; scatterLayer < 3; scatterLayer += 1) {
+          const scatterSeed = (
+            ((pointIndex + 11) * 53 + (scatterLayer + 7) * 71) % 149
+          ) / 148;
+          if (scatterSeed < 0.2 - rareScatterEnvelope * 0.08) continue;
+          const angle =
+            (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 +
+            rotation +
+            Math.sin(pointIndex * 2.17 + scatterLayer * 3.41) * 0.014;
+          const scatterDistance =
+            rareScatterEnvelope *
+            (10 + scatterSeed * 12) *
+            (0.86 + Math.min(0.4, profile) * 0.35);
+          const scatterRadius = outerRingRadius + scatterDistance;
+          const x = centerX + Math.cos(angle) * scatterRadius;
+          const y = centerY + Math.sin(angle) * scatterRadius;
+          const size = 0.9 + scatterSeed * 1.05 + rareScatterEnvelope * 0.45;
+          context.rect(x - size / 2, y - size / 2, size, size);
+        }
+      }
+      context.fillStyle = `rgba(244, 252, 255, ${
+        0.26 + rareScatterEnvelope * 0.62
+      })`;
+      context.fill();
+    }
+
+    // 明瞭な帯の内縁は線として主張させず、粒子へほどける位置のごく薄い補助光にする。
+    context.shadowBlur = 5 + macroGlow * 8;
+    context.beginPath();
     context.moveTo(
       (this.orbitContourX[lastIndex] + this.orbitContourX[0]) / 2,
       (this.orbitContourY[lastIndex] + this.orbitContourY[0]) / 2
@@ -1166,27 +2278,61 @@ class AudioSpectrumVisualizer {
       );
     }
     context.closePath();
-    context.strokeStyle = `rgba(246, 251, 255, ${0.76 + macroGlow * 0.2})`;
-    context.lineWidth = 3.6 + macroGlow * 3.2 + this.snareVisualPulse * 1.3;
-    context.shadowColor = `rgba(178, 224, 255, ${0.66 + macroGlow * 0.22})`;
-    context.shadowBlur = 10 + macroGlow * 12;
+    context.strokeStyle = `rgba(235, 248, 255, ${
+      0.055 + macroGlow * 0.075
+    })`;
+    context.lineWidth = 0.42;
     context.stroke();
 
-    // 強い帯域だけ線幅を足し、大音量時に輪郭が局所的に大きく膨らむようにする。
-    context.shadowBlur = 5 + macroGlow * 7;
-    for (let tier = 0; tier < 3; tier += 1) {
-      context.beginPath();
-      const threshold = 0.18 + tier * 0.16;
-      for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
-        if (this.orbitProfile[pointIndex] < threshold) continue;
-        const nextIndex = (pointIndex + 1) % ORBIT_SPECTRUM_POINT_COUNT;
-        context.moveTo(this.orbitContourX[pointIndex], this.orbitContourY[pointIndex]);
-        context.lineTo(this.orbitContourX[nextIndex], this.orbitContourY[nextIndex]);
+    context.shadowBlur = 0;
+    context.beginPath();
+    // 内縁から複数層の粒子を散らし、厚いリボンが徐々に崩れる境界を作る。
+    const featherLayerCount = 6;
+    for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 2) {
+      const profile = Math.max(
+        0,
+        this.orbitProfile[pointIndex] - orbitMeanProfile * 0.86
+      );
+      const featherStrength = Math.min(
+        1,
+        profile * 1.75 +
+          this.orbitMeshPresence * 0.18 +
+          this.orbitFlowAccent * 0.28
+      );
+      if (featherStrength < 0.055) continue;
+      const angle = (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 + rotation;
+      const solidInnerRadius = Math.hypot(
+        this.orbitContourX[pointIndex] - centerX,
+        this.orbitContourY[pointIndex] - centerY
+      );
+      for (let layerIndex = 0; layerIndex < featherLayerCount; layerIndex += 1) {
+        const layerProgress = (layerIndex + 1) / featherLayerCount;
+        const particleSeed = (
+          ((pointIndex + 5) * 37 + (layerIndex + 3) * 61) % 127
+        ) / 126;
+        const layerPopulation =
+          featherStrength * (1 - layerProgress * 0.58) +
+          this.kickVisualPulse * 0.08;
+        if (particleSeed > layerPopulation) continue;
+        const angleJitter = Math.sin(
+          (pointIndex + 1) * 4.21 + layerIndex * 2.73
+        ) * (0.004 + layerProgress * 0.012);
+        const particleAngle = angle + angleJitter;
+        const particleDistance =
+          renderedRadius * (0.008 + profile * 0.052) * layerProgress;
+        const particleRadius = solidInnerRadius - particleDistance;
+        const x = centerX + Math.cos(particleAngle) * particleRadius;
+        const y = centerY + Math.sin(particleAngle) * particleRadius;
+        const size =
+          1.05 + profile * 1.45 + (1 - layerProgress) * 0.48 +
+          this.kickVisualPulse * 0.42;
+        context.rect(x - size / 2, y - size / 2, size, size);
       }
-      context.strokeStyle = `rgba(255, 255, 255, ${0.34 + tier * 0.14})`;
-      context.lineWidth = 4.8 + tier * 2.8 + this.kickVisualPulse * 2;
-      context.stroke();
     }
+    context.fillStyle = `rgba(239, 249, 255, ${
+      0.32 + macroGlow * 0.28 + this.kickVisualPulse * 0.18
+    })`;
+    context.fill();
     context.restore();
 
     if (this.audioStatus !== 'ready') {
