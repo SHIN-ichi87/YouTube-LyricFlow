@@ -1,5 +1,4 @@
 import { byId, state } from './state';
-import { showToast } from './interactions';
 
 interface CapturableVideoElement extends HTMLVideoElement {
   captureStream?: () => MediaStream;
@@ -15,7 +14,8 @@ const MAX_DEVICE_PIXEL_RATIO = 2;
 const ORBIT_SPECTRUM_POINT_COUNT = 128;
 const ORBIT_MESH_LAYER_COUNT = 24;
 const ORBIT_MESH_GRID_SIZE = 58;
-const ORBIT_TARGET_FRAME_INTERVAL_MS = 1000 / 30;
+// 30fpsでは拍間の戻りが段階的に見えやすい。メッシュ負荷を抑えつつ輪郭の追従感が出る45fpsで描く。
+const ORBIT_TARGET_FRAME_INTERVAL_MS = 1000 / 45;
 const ORBIT_MAX_DEVICE_PIXEL_RATIO = 1.25;
 
 // Mirror Spectrum の位置とサイズはここだけを触れば調整できる。
@@ -721,7 +721,6 @@ class AudioSpectrumVisualizer {
           0.84 + this.climaxEnergy * 0.22 + this.arrangementDensity * 0.14
         );
       }
-      showToast('DEBUG: サビ突入・高さ +150%');
     } else {
       this.climaxBurst *= Math.pow(0.97, frameScale);
       this.climaxBurstExpansion +=
@@ -938,10 +937,10 @@ class AudioSpectrumVisualizer {
         snarePulse * snareProfile * 0.74 +
         hatPulse * hatProfile * 0.96;
 
-      // 小音量時はさらに沈め、サビ付近で一気に開く非線形カーブにする。
-      // 最大時の大きさは維持しつつ、小音量では発声や打音の瞬間成分もRMS音量に沿って沈める。
-      const sceneScale = 0.045 + Math.pow(macroEnergy, 1.5) * 1.485;
-      const transientScale = 0.2 + Math.pow(macroEnergy, 1.28) * 1.13;
+      // NCSのリングは静かな区間でも輪郭が音へ反応し続ける。RMSで完全に沈めず、
+      // 持続音と打音へ別々の床を設けて、マスタリング差が大きい曲でも動きを残す。
+      const sceneScale = 0.17 + Math.pow(macroEnergy, 1.22) * 1.28;
+      const transientScale = 0.38 + Math.pow(macroEnergy, 0.94) * 1.02;
       const targetValue = Math.min(
         1,
         (spectrumBase + melodyLayer) * sceneScale +
@@ -1223,18 +1222,19 @@ class AudioSpectrumVisualizer {
     highEnergy /= 8;
 
     const macroGlow = Math.pow(this.macroEnergy, 1.05);
-    // 持続音をそのまま半径へ足すと、マスタリング音量の大きい曲では常時最大になる。
-    // 高い閾値とカーブを通した持続成分に、短い打音成分を別枠で足して呼吸幅を作る。
+    // NCS実物は静かな区間でも円の占有率を大きく保ち、音量差は主にリング厚で見せる。
+    // 半径は最大値の86%を床にし、編成と低域で残りを開く。これによりDrop判定が
+    // 成立しにくい曲でも「小さい円のまま」にならず、右側の存在感を維持できる。
     const sustainedRadiusDrive =
-      macroGlow * 0.32 +
-      this.arrangementDensity * 0.15 +
-      this.climaxEnergy * 0.38 +
-      bassEnergy * 0.08;
+      macroGlow * 0.4 +
+      this.arrangementDensity * 0.28 +
+      this.climaxEnergy * 0.24 +
+      bassEnergy * 0.16;
     const normalizedRadiusDrive = Math.min(
       1,
-      Math.max(0, (sustainedRadiusDrive - 0.18) / 0.63)
+      Math.max(0, (sustainedRadiusDrive - 0.1) / 0.68)
     );
-    const sustainedRadiusEnergy = Math.pow(normalizedRadiusDrive, 1.65);
+    const sustainedRadiusEnergy = Math.pow(normalizedRadiusDrive, 1.18);
     const transientRadiusEnergy = Math.min(
       1,
       this.climaxBurst * this.climaxBurstExpansion * 0.78
@@ -1243,7 +1243,7 @@ class AudioSpectrumVisualizer {
     // 常時成分は従来の上限内なので、通常時の円サイズには影響しない。
     const renderedRadius = maximumRadius * Math.min(
       1.04,
-      0.64 + sustainedRadiusEnergy * 0.27 + transientRadiusEnergy * 0.13
+      0.86 + sustainedRadiusEnergy * 0.14 + transientRadiusEnergy * 0.06
     );
     // 最外形の基準半径。楽器固有の圧縮・呼吸・レアイベントは後段で全体へ適用する。
     const baseOuterRingRadius = renderedRadius * (1.035 + macroGlow * 0.008);
@@ -1445,9 +1445,17 @@ class AudioSpectrumVisualizer {
             ((this.orbitRareCollapseProgress - 0.32) / 0.68) * Math.PI * 0.5
           )
         : 0;
+    // Kickの瞬間は円全体もわずかに前へ出す。局所スペクトラムだけを動かす場合より、
+    // 低域を身体で感じる「押し」と、拍間へ戻る気持ちよさが明確になる。
+    const beatRadiusScale =
+      1 +
+      Math.pow(this.kickVisualPulse, 0.68) *
+        (0.026 + this.orbitFlowBass * 0.018) +
+      Math.pow(this.snareVisualPulse, 0.8) * 0.007;
     const instrumentRadiusScale =
       bassBreathScale *
-      (1 - kickCompressionEnvelope * this.orbitKickCompressionStrength * 0.07) *
+      beatRadiusScale *
+      (1 - kickCompressionEnvelope * this.orbitKickCompressionStrength * 0.018) *
       (1 - rareCollapseEnvelope * this.orbitRareCollapseStrength * 0.58);
     const outerRingRadius = baseOuterRingRadius * instrumentRadiusScale;
 
@@ -1568,6 +1576,41 @@ class AudioSpectrumVisualizer {
       renderedRadius * 3.4
     );
 
+    // 拍の瞬間だけリング周辺のBloomを押し上げる。白い本体を太くし続けず、
+    // 一瞬だけ露光が上がるため、暗い映像でもキックの到達点がはっきり見える。
+    const impactGlowStrength = Math.min(
+      1,
+      Math.pow(this.kickVisualPulse, 0.62) * (0.58 + macroGlow * 0.42) +
+        Math.pow(this.snareVisualPulse, 0.78) * 0.22
+    );
+    if (impactGlowStrength > 0.012) {
+      const impactGlow = context.createRadialGradient(
+        centerX,
+        centerY,
+        outerRingRadius * 0.72,
+        centerX,
+        centerY,
+        outerRingRadius * 1.24
+      );
+      impactGlow.addColorStop(0, 'rgba(198, 230, 255, 0)');
+      impactGlow.addColorStop(
+        0.64,
+        `rgba(205, 237, 255, ${impactGlowStrength * 0.035})`
+      );
+      impactGlow.addColorStop(
+        0.82,
+        `rgba(241, 250, 255, ${impactGlowStrength * 0.13})`
+      );
+      impactGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      context.fillStyle = impactGlow;
+      context.fillRect(
+        centerX - outerRingRadius * 1.3,
+        centerY - outerRingRadius * 1.3,
+        outerRingRadius * 2.6,
+        outerRingRadius * 2.6
+      );
+    }
+
     const rotation = now * 0.000012;
     const historyLayers = Math.max(1, this.orbitHistoryCount);
     const patternMorph = 0.5 + Math.sin(this.orbitFlowPhase * 0.31) * 0.5;
@@ -1623,7 +1666,7 @@ class AudioSpectrumVisualizer {
     );
     const particlePopulation = Math.min(
       0.78,
-      0.035 +
+      0.072 +
         this.orbitMeshPresence * 0.29 +
         this.arrangementDensity * 0.12 +
         this.orbitFlowAccent * 0.17 +
@@ -2078,14 +2121,15 @@ class AudioSpectrumVisualizer {
     context.fill();
     context.restore();
 
-    // 外側は正円へ固定し、音の強さは内側へ食い込むリボン厚としてだけ表現する。
+    // 太さの大部分はNCS同様に内側へ食い込ませつつ、外縁にも小さな変位を与える。
+    // 完全な正円だけが残る機械的な見え方を避け、打音の瞬間に輪郭そのものを跳ねさせる。
     for (let pointIndex = 0; pointIndex < ORBIT_SPECTRUM_POINT_COUNT; pointIndex += 1) {
       const angle = (pointIndex / ORBIT_SPECTRUM_POINT_COUNT) * Math.PI * 2 + rotation;
       const profile = Math.max(0, this.orbitProfile[pointIndex]);
       const localizedProfile = Math.max(0, profile - orbitMeanProfile * 0.9);
       const shapedProfile = Math.pow(localizedProfile, 0.62);
       const transientThickness = shapedProfile * (
-        this.kickVisualPulse * 0.042
+        this.kickVisualPulse * 0.052
       );
       const baseRibbonThickness =
         2 +
@@ -2097,20 +2141,26 @@ class AudioSpectrumVisualizer {
           ) +
           transientThickness
         ) +
-        this.kickVisualPulse * 2.4;
-      // 明瞭な芯と薄い膜の比率を変えず、両方を含む外周全体の幅を2倍にする。
+        this.kickVisualPulse * 3.2;
+      const outwardDisplacement =
+        renderedRadius *
+          shapedProfile *
+          (0.018 + macroGlow * 0.008 + this.kickVisualPulse * 0.014) +
+        this.kickVisualPulse * (0.7 + shapedProfile * 1.8);
+      const reactiveOuterRadius = outerRingRadius + outwardDisplacement;
+      // 明瞭な芯と薄い膜を合わせた太さ。外向き変位を含めても内側の量感を失わない。
       const ribbonThickness = Math.min(
-        outerRingRadius * 0.44,
-        baseRibbonThickness * 2
+        outerRingRadius * 0.46,
+        baseRibbonThickness * 1.92 + outwardDisplacement
       );
-      const innerRadius = outerRingRadius - ribbonThickness;
-      const contourRadius = outerRingRadius - ribbonThickness * 0.42;
+      const innerRadius = reactiveOuterRadius - ribbonThickness;
+      const contourRadius = reactiveOuterRadius - ribbonThickness * 0.42;
       this.orbitContourX[pointIndex] = centerX + Math.cos(angle) * contourRadius;
       this.orbitContourY[pointIndex] = centerY + Math.sin(angle) * contourRadius;
       this.orbitRibbonOuterX[pointIndex] =
-        centerX + Math.cos(angle) * outerRingRadius;
+        centerX + Math.cos(angle) * reactiveOuterRadius;
       this.orbitRibbonOuterY[pointIndex] =
-        centerY + Math.sin(angle) * outerRingRadius;
+        centerY + Math.sin(angle) * reactiveOuterRadius;
       this.orbitRibbonInnerX[pointIndex] =
         centerX + Math.cos(angle) * innerRadius;
       this.orbitRibbonInnerY[pointIndex] =
@@ -2180,7 +2230,7 @@ class AudioSpectrumVisualizer {
     );
     context.fillStyle = ribbonGradient;
     context.shadowColor = `rgba(178, 224, 255, ${0.5 + macroGlow * 0.2})`;
-    context.shadowBlur = 8 + macroGlow * 13 + this.kickVisualPulse * 4;
+    context.shadowBlur = 9 + macroGlow * 14 + this.kickVisualPulse * 11;
     context.fill();
 
     // 薄い発光膜だけで厚く見せず、音で変形した外周の外側約42%を明瞭な芯として塗る。
@@ -2221,12 +2271,13 @@ class AudioSpectrumVisualizer {
     context.shadowBlur = 4 + macroGlow * 7;
     context.fill();
 
-    // リボンの最外端を独立した正円で締め、どれだけ音が強くても輪郭を美しく保つ。
+    // 反応する外縁の下へ細い基準円を残し、激しい変形時にも形が崩れすぎないよう締める。
     context.beginPath();
     context.arc(centerX, centerY, outerRingRadius, 0, Math.PI * 2);
     context.strokeStyle = `rgba(255, 255, 255, ${0.72 + macroGlow * 0.22})`;
-    context.lineWidth = 1.35 + macroGlow * 0.9;
-    context.shadowBlur = 7 + macroGlow * 9;
+    context.lineWidth =
+      1.55 + macroGlow * 1.05 + Math.pow(this.kickVisualPulse, 0.7) * 0.72;
+    context.shadowBlur = 8 + macroGlow * 10 + this.kickVisualPulse * 8;
     context.stroke();
 
     // レアイベントでは外周の粒子だけを約10〜22px外へ飛ばし、同じ軌道で吸い戻す。
